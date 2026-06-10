@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
 // --- KONFIGURASI TINGKATAN (STAGES) SESUAI KISI-KISI ---
@@ -290,40 +290,21 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: scoreEvaluator.toString()
       };
     }
-    else if (questionIndex === 4) {
-      const condA = Math.random() > 0.5;
-      const condB = Math.random() > 0.5;
-      const strA = condA ? "VALID" : "KEDALUWARSA";
-      const strB = condB ? "DIIZINKAN" : "DITOLAK";
-      const isGateAnd = Math.random() > 0.5;
-      const gateOperator = isGateAnd ? "DAN" : "ATAU";
-      const evalCondition = isGateAnd ? (condA && condB) : (condA || condB);
-      const finalAns = evalCondition ? "AKSES_DIBERIKAN" : "AKSES_DIBLOKIR";
-
-      return {
-        type,
-        qNum: currentQuestionNum,
-        question: `[SOAL ${currentQuestionNum} - PENIMPAAN PROTOKOL KEAMANAN] Evaluasi gerbang logika majemuk (${gateOperator}). Perhatikan dengan seksama syarat penilaian pada baris ke-3 untuk menentukan status akses akhir di sistem!`,
-        codeLines: [
-          `1: status_token = "${strA}"`,
-          `2: izin_masuk = "${strB}"`,
-          `3: JIKA status_token == "VALID" ${gateOperator} izin_masuk == "DIIZINKAN" MAKA`,
-          `4:   hasil_otorisasi = "AKSES_DIBERIKAN"`,
-          `5: LAINNYA`,
-          `6:   hasil_otorisasi = "AKSES_DIBLOKIR"`,
-          `7: AKHIR_JIKA`,
-          `8: CETAK hasil_otorisasi`
-        ],
-        answer: finalAns
-      };
-    }
     else if (questionIndex === 5) {
       const g1Correct = (inputA === 1 && inputB === 1) ? 1 : 0;
       return {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - KONSOL LALU LINTAS DAYA] Kelistrikan ruang jaringan menggunakan sistem SERI. Analisis status Saklar A DAN Saklar B untuk menentukan apakah lampu utama berhasil menyala!`,
+        question: `[SOAL ${currentQuestionNum} - KABEL SERI] 
+Aturan Aliran: Listrik mengalir lurus melewati Saklar A lalu ke Saklar B.
+
+Cara Menebak Status Lampu:
+1. Periksa angka Saklar A dan B di bawah.
+2. Jika ada SATU SAJA saklar yang mati (berangka 0), maka aliran listrik otomatis terputus.
+3. Lampu hanya bisa menyala jika kedua saklar terbukti kompak aktif.
+
+Gunakan langkah di atas untuk menentukan status lampu utama!`,
         circuitType: 'LIGHT-AND',
         inputs: { A: inputA, B: inputB },
         correctGates: { G1: g1Correct }
@@ -336,7 +317,15 @@ function generateQuestion(stage, questionIndex = 0) {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - SAKLAR PENGAMAN OTOMATIS] Sistem mendeteksi komponen pembalik nilai (Pembalik Data) pada Saklar A. Nilai Saklar A akan berbalik (1 jadi 0, 0 jadi 1) sebelum dialirkan secara SERI dengan Saklar B!`,
+        question: `[SOAL ${currentQuestionNum} - GERBANG TERBALIK] 
+Aturan Aliran: Jalur Saklar A dipasangi komponen pembalik (NOT) sebelum menyatu secara seri dengan Saklar B.
+
+Cara Menebak Status Lampu:
+1. Lihat angka asli Saklar A, lalu "BALIKKAN" nilainya (jika 0 ubah jadi 1, jika 1 ubah jadi 0).
+2. Ambil angka hasil pukulan baru tersebut, lalu pasangkan dengan angka asli Saklar B.
+3. Ingat aturan kabel seri: Aliran baru lolos ke lampu jika kedua angka pasangannya sama-sama bernilai 1.
+
+Ikuti petunjuk di atas untuk memeriksa apakah lampu berhasil menyala!`,
         circuitType: 'LIGHT-INVERT-AND',
         inputs: { A: inputA, B: inputB },
         correctGates: { G1: g1Correct }
@@ -349,7 +338,15 @@ function generateQuestion(stage, questionIndex = 0) {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - JARINGAN STRUKTUR CAMPURAN] Tantangan 3 Saklar! Aliran listrik atas diatur secara SERI (Saklar A DAN B), lalu digabungkan secara PARALEL (ATAU) dengan jalur bawah mandiri (Saklar C).`,
+        question: `[SOAL ${currentQuestionNum} - PERCABANGAN GANDA] 
+Aturan Aliran: Listrik memiliki dua jalan alternatif (Paralel) untuk sampai ke lampu utama.
+
+Cara Menebak Status Lampu:
+1. Periksa JALUR ATAS: Listrik lolos jika Saklar A dan B kompak hidup (dua-duanya berangka 1).
+2. Periksa JALUR BAWAH: Listrik langsung lolos jika Saklar C sendirian berada di posisi hidup (angka 1).
+3. Gabungkan: Lampu pasti menyala (1) jika minimal ada SALAH SATU JALUR (atas atau bawah) yang sukses meloloskan listrik.
+
+Telusuri kedua jalur di bawah secara jeli untuk menemukan jawabanmu!`,
         circuitType: 'LIGHT-MIX-3WAY',
         inputs: { A: inputA, B: inputB, C: inputC },
         correctGates: { G1: g1Correct }
@@ -364,7 +361,16 @@ function generateQuestion(stage, questionIndex = 0) {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - DISTRIBUSI DAYA TINGKAT LANJUT] Lacak perputaran daya! Jalur atas memproses pembalikan Saklar A secara SERI dengan Saklar B. Jalur bawah memproses pembalikan Saklar C. Kedua jalur digabung secara PARALEL!`,
+        question: `[SOAL ${currentQuestionNum} - DOUBLE INVERSI] 
+Aturan Aliran: Dua jalan alternatif dengan komponen pembalik arus (NOT) pada saklar utamanya.
+
+Cara Menebak Status Lampu:
+1. Langkah Awal: "BALIKKAN" angka asli Saklar A dan Saklar C (tukar angka 0 menjadi 1, atau 1 menjadi 0).
+2. Hitung JALUR ATAS: Gunakan angka terbalik A tadi, gabungkan secara seri dengan angka asli B (harus sama-sama 1).
+3. Hitung JALUR BAWAH: Cukup lihat angka hasil balikan dari Saklar C.
+4. Lampu akan menyala (1) asalkan salah satu jalur tersebut berhasil mengalirkan listrik bernilai 1.
+
+Lakukan simulasi coretan di atas untuk menentukan status akhir lampu!`,
         circuitType: 'LIGHT-INVERT-MIX',
         inputs: { A: inputA, B: inputB, C: inputC },
         correctGates: { G1: g1Correct }
@@ -379,7 +385,15 @@ function generateQuestion(stage, questionIndex = 0) {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - UJIAN BOSS: MATRIKS EMPAT SAKLAR] Ujian puncak kelistrikan! Sistem membagi aliran jadi dua cabang utama: Jalur Atas diatur SERI (Saklar A DAN B), Jalur Bawah juga diatur SERI (Saklar C DAN D). Keduanya bertemu di titik akhir secara PARALEL!`,
+        question: `[SOAL ${currentQuestionNum} - FILTRASI MATRIKS 4 SAKLAR] 
+Aturan Aliran: Dua cabang kelompok independen yang bersaing mengirimkan daya ke lampu induk.
+
+Cara Menebak Status Lampu:
+1. Evaluasi JALUR ATAS: Apakah pasangan Saklar A DAN B kompak berada di posisi 1? Jika ya, Jalur Atas lolos.
+2. Evaluasi JALUR BAWAH: Apakah pasangan Saklar C DAN D kompak berada di posisi 1? Jika ya, Jalur Bawah lolos.
+3. Lampu induk di ujung akan berhasil menyala (1) jika Jalur Atas ATAU Jalur Bawah sukses meloloskan aliran data.
+
+Uji tingkat kekompakan kedua kelompok saklar di bawah untuk mengisi jawaban!`,
         circuitType: 'LIGHT-FINAL-BOSS-4WAY',
         inputs: { A: inputA, B: inputB, C: inputC, D: inputD },
         correctGates: { G1: g1Correct }
@@ -526,23 +540,28 @@ function generateQuestion(stage, questionIndex = 0) {
 }
 
 export default function App() {
-  const [currentStage, setCurrentStage] = useState(1);
-  const [questionsAnsweredInStage, setQuestionsAnsweredInStage] = useState(0);
-  const [activeQuestion, setActiveQuestion] = useState(() => generateQuestion(1, 0));
-  const [playerAnswer, setPlayerAnswer] = useState('');
-  const [binarySwitches, setBinarySwitches] = useState([0, 0, 0, 0, 0]);
+  const [currentStage, setCurrentStage] = useState(() => {
+    return Number(localStorage.getItem('tycoon_tahap_sekarang') || '1');
+  });
+  const [questionsAnsweredInStage, setQuestionsAnsweredInStage] = useState(0); 
+  
+  // 🌟 STATE BARU: Menyimpan seluruh paket soal dan paket jawaban dalam satu Tahap
+  const [stageQuestions, setStageQuestions] = useState([]);
+  const [stageAnswers, setStageAnswers] = useState({}); 
+  
   const [currentArrayData, setCurrentArrayData] = useState([]);
   const [studentMoves, setStudentMoves] = useState(0);
   const [draggedOverIdx, setDraggedOverIdx] = useState(null);
-  const [circuitGates, setCircuitGates] = useState({ G1: null, G2: null, G3: null });
-
+  
   const [score, setScore] = useState(0);
   const [incorrectAttempts, setIncorrectAttempts] = useState(0);
   const [feedback, setFeedback] = useState({ type: '', msg: '' });
   const [isExamComplete, setIsExamComplete] = useState(false);
-  const [gameLogs, setGameLogs] = useState(['Server Ujian Aktif. Menginisialisasi komponen logika secara dinamis.']);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem('tycoon_nama_siswa');
+  });
   const [studentName, setStudentName] = useState('');
   const [studentClass, setStudentClass] = useState('');
   const [inputToken, setInputToken] = useState('');
@@ -550,66 +569,68 @@ export default function App() {
 
   // State pengontrol kemunculan jendela pop-up konfirmasi perpindahan babak
   const [showStageConfirmPopup, setShowStageConfirmPopup] = useState(false);
-  const [pendingNextStage, setPendingNextStage] = useState(null);
-
-  const logEndRef = useRef(null);
 
   const logEvent = () => { };
 
-  useEffect(() => {
-    const pulihkanSesiSiswa = () => {
-      const savedName = localStorage.getItem('tycoon_nama_siswa');
-      const savedClass = localStorage.getItem('tycoon_kelas_siswa');
-      const savedToken = localStorage.getItem('tycoon_token_aktif');
-      const savedStage = localStorage.getItem('tycoon_tahap_sekarang');
-      const savedQuestionIndex = localStorage.getItem('tycoon_indeks_soal');
-      const savedScore = localStorage.getItem('tycoon_skor_sekarang');
-      const savedIncorrect = localStorage.getItem('tycoon_salah_sekarang');
+  // 🌟 FUNGSI BARU: Mengunci pengacakan soal hanya sekali di awal tahap
+  const initStageQuestions = (stage) => {
+    let maxQuestions = 5;
+    if (stage === 1) maxQuestions = 9;
+    else if (stage === 2 || stage === 4) maxQuestions = 10;
 
-      if (savedName && savedClass && savedToken && savedStage) {
-        setStudentName(savedName);
-        setStudentClass(savedClass);
-        setInputToken(savedToken);
-        setCurrentStage(Number(savedStage));
-        setQuestionsAnsweredInStage(Number(savedQuestionIndex || 0));
-        setScore(Number(savedScore || 0));
-        setIncorrectAttempts(Number(savedIncorrect || 0));
-        setIsAuthenticated(true);
-
-        const q = generateQuestion(Number(savedStage), Number(savedQuestionIndex || 0));
-        setActiveQuestion(q);
-        if (Number(savedStage) === 6 && q && q.initialArray) {
-          const savedArray = localStorage.getItem('tycoon_array_terakhir');
-          if (savedArray) {
-            setCurrentArrayData(JSON.parse(savedArray));
-          } else {
-            setCurrentArrayData([...q.initialArray]);
-          }
-        }
-
-        setGameLogs((prev) => [...prev, `💾 Sistem: Berhasil memulihkan progres ujian ${savedName} di Tahap ${savedStage} secara otomatis dari memori HP.`]);
-      }
-    };
-
-    pulihkanSesiSiswa();
-  }, []);
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [gameLogs]);
-
-  useEffect(() => {
-    if (currentStage === 6 && (!activeQuestion || activeQuestion.type !== 'INSERTION-SORT')) {
-      const q = generateQuestion(6, questionsAnsweredInStage);
-      const tid = setTimeout(() => {
-        setActiveQuestion(q);
-        if (q && q.initialArray) {
-          setCurrentArrayData([...q.initialArray]);
-        }
-      }, 0);
-      return () => clearTimeout(tid);
+    const lockedPack = [];
+    for (let i = 0; i < maxQuestions; i++) {
+      lockedPack.push(generateQuestion(stage, i));
     }
-  }, [currentStage, activeQuestion, questionsAnsweredInStage]);
+    setStageQuestions(lockedPack);
+    setStageAnswers({}); // Kosongkan lembar jawaban baru
+
+    // Khusus inisialisasi visual array Tahap 6
+    if (stage === 6 && lockedPack[0]?.initialArray) {
+      setCurrentArrayData([...lockedPack[0].initialArray]);
+      setStudentMoves(0);
+    }
+  };
+
+  // 🌟 POINTER DINAMIS: Menjaga kompatibilitas kodingan visual lamamu
+  const activeQuestion = stageQuestions[questionsAnsweredInStage] || null;
+  const playerAnswer = stageAnswers[questionsAnsweredInStage] || '';
+  const setPlayerAnswer = (teks) => {
+    setStageAnswers(prev => ({ ...prev, [questionsAnsweredInStage]: teks }));
+  };
+
+  const checkAnswer = () => {
+    navigasiKeSoal(1);
+  };
+
+  // Switch biner & Sirkuit sirkuit membaca memori per nomor soal
+  const binarySwitches = stageAnswers[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
+  const setBinarySwitches = (valOrFn) => {
+    setStageAnswers(prev => {
+      const currentVal = prev[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
+      const newVal = typeof valOrFn === 'function' ? valOrFn(currentVal) : valOrFn;
+      return { ...prev, [`switch_${questionsAnsweredInStage}`]: newVal };
+    });
+  };
+
+  const circuitGates = stageAnswers[`circuit_${questionsAnsweredInStage}`] || { G1: null, G2: null, G3: null };
+  const setCircuitGates = (valOrFn) => {
+    setStageAnswers(prev => {
+      const currentVal = prev[`circuit_${questionsAnsweredInStage}`] || { G1: null, G2: null, G3: null };
+      const newVal = typeof valOrFn === 'function' ? valOrFn(currentVal) : valOrFn;
+      return { ...prev, [`circuit_${questionsAnsweredInStage}`]: newVal };
+    });
+  };
+
+  // ✅ Membungkus fungsi dengan setTimeout untuk menghindari cascading renders
+  useEffect(() => {
+    if (isAuthenticated) {
+      const timer = setTimeout(() => {
+        initStageQuestions(currentStage);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, currentStage]);
 
   const handleLoginUjian = async () => {
     if (!studentName.trim()) {
@@ -653,20 +674,13 @@ export default function App() {
       localStorage.setItem('tycoon_nama_siswa', studentName.trim().toUpperCase());
       localStorage.setItem('tycoon_kelas_siswa', dataSiswa.kelas);
 
+      // Ganti baris penentu stage di akhir login dengan ini:
       const savedStage = localStorage.getItem('tycoon_tahap_sekarang');
-      if (savedStage) {
-        const numStage = parseInt(savedStage, 10);
-        setCurrentStage(numStage);
-        setScore(parseInt(localStorage.getItem('tycoon_skor_sekarang') || '0', 10));
-        setIncorrectAttempts(parseInt(localStorage.getItem('tycoon_salah_sekarang') || '0', 10));
-        setQuestionsAnsweredInStage(parseInt(localStorage.getItem('tycoon_indeks_soal') || '0', 10));
-
-        logEvent(`💾 Sistem: Berhasil memulihkan progres ujian terakhirmu di kelas.`);
-      } else {
-        setCurrentStage(1);
-        logEvent(`🟢 Sistem: Sesi ujian cloud diverifikasi. Selamat bekerja, ${studentName.trim().toUpperCase()}!`);
-      }
-
+      const startStage = savedStage ? parseInt(savedStage, 10) : 1;
+      setCurrentStage(startStage);
+      setQuestionsAnsweredInStage(0);
+      initStageQuestions(startStage);
+      
       setFeedback({ type: 'success', msg: 'Akses ujian berhasil dibuka! Semoga sukses.' });
 
     } catch (err) {
@@ -723,170 +737,95 @@ export default function App() {
     }
   };
 
-  const checkAnswer = () => {
-    if (!activeQuestion || isExamComplete || currentStage === 5 || currentStage === 6) return;
+  // 🌟 NAVIGASI: Pindah nomor tanpa validasi instan (Mendukung pemeriksaan ulang)
+  const navigasiKeSoal = (arah) => {
+    let maxQuestions = 5;
+    if (currentStage === 1) maxQuestions = 9;
+    else if (currentStage === 2 || currentStage === 4) maxQuestions = 10;
 
-    if (currentStage === 1) {
-      if (activeQuestion.mode === 'theory' || activeQuestion.mode === 'text') {
-        const finalSubmission = playerAnswer.trim().toUpperCase();
-        const correctTarget = activeQuestion.answer.trim().toUpperCase();
+    const indeksBaru = questionsAnsweredInStage + arah;
 
-        if (finalSubmission === correctTarget) {
-          processCorrectAnswer(true); // ✅ Benar
-        } else {
-          processCorrectAnswer(false); // ✅ Salah, tapi tetep maju nomor
-        }
-        return;
-      }
+    if (indeksBaru >= 0 && indeksBaru < maxQuestions) {
+      setQuestionsAnsweredInStage(indeksBaru);
+      setFeedback({ type: '', msg: '' });
 
-      if (activeQuestion.mode === 'switch') {
-        const weights = [16, 8, 4, 2, 1];
-        const calculatedDecimal = binarySwitches.reduce((acc, bit, idx) => acc + (bit * weights[idx]), 0);
-        const isCorrect = calculatedDecimal === activeQuestion.targetNum;
-
-        if (isCorrect) {
-          processCorrectAnswer(true); // ✅ Benar
-          setBinarySwitches([0, 0, 0, 0, 0]);
-        } else {
-          processCorrectAnswer(false); // ✅ Salah, tapi tetep maju nomor
-          setBinarySwitches([0, 0, 0, 0, 0]);
-        }
-        return;
-      }
-    }
-
-    const finalSubmission = playerAnswer.trim().toUpperCase();
-    const correctTarget = activeQuestion.answer.trim().toUpperCase();
-    if (finalSubmission === correctTarget) {
-      processCorrectAnswer(true);
-    } else {
-      processCorrectAnswer(false);
-    }
-  };
-
-  const handleGridCellClick = (rowIndex, colIndex) => {
-    if (currentStage !== 5 || !activeQuestion) return;
-
-    const isCorrectGridClick = activeQuestion.errorType === 'BARIS'
-      ? rowIndex === activeQuestion.errorIndex
-      : colIndex === activeQuestion.errorIndex;
-
-    if (isCorrectGridClick) {
-      processCorrectAnswer(true); // ✅ Benar, lanjut nomor berikut
-    } else {
-      processCorrectAnswer(false); // ✅ Salah, tetep lanjut nomor berikut
-    }
-  };
-
-  const processCorrectAnswer = () => {
-    const updatedScore = score + 1;
-    setFeedback({ type: 'success', msg: 'Luar biasa! Analisis jawaban kamu benar.' });
-
-    let maxQuestionsForThisStage = 3;
-    if (currentStage === 1) maxQuestionsForThisStage = 9;
-    else if (currentStage === 2) maxQuestionsForThisStage = 10;
-    else if (currentStage === 4) maxQuestionsForThisStage = 10;
-    else if (currentStage === 3 || currentStage === 5 || currentStage === 6) maxQuestionsForThisStage = 5;
-
-    const nextCount = questionsAnsweredInStage + 1;
-
-    if (nextCount < maxQuestionsForThisStage) {
-      localStorage.setItem('tycoon_indeks_soal', String(nextCount));
-      localStorage.setItem('tycoon_skor_sekarang', String(updatedScore));
-
-      setQuestionsAnsweredInStage(nextCount);
-      setPlayerAnswer('');
-
-      const nextQ = generateQuestion(currentStage, nextCount);
-      setActiveQuestion(nextQ);
-
-      if (currentStage === 6) {
-        setCurrentArrayData(nextQ ? [...nextQ.initialArray] : []);
-        localStorage.setItem('tycoon_array_terakhir', JSON.stringify(nextQ ? [...nextQ.initialArray] : []));
+      // Sinkronisasi data array jika berada di Tahap 6
+      if (currentStage === 6 && stageQuestions[indeksBaru]?.initialArray) {
+        setCurrentArrayData([...stageQuestions[indeksBaru].initialArray]);
         setStudentMoves(0);
       }
-    } else {
-      // === JALUR JIKA SEMUA NOMOR DI TAHAP INI SUDAH HABIS DIKERJAKAN ===
-      if (currentStage === 6) {
-        setIsExamComplete(true);
-        setActiveQuestion(null);
-        setPlayerAnswer('');
-        setFeedback({ type: 'success', msg: '🎉 UJIAN SELESAI! Terminal berhasil mengunci seluruh berkas nilai Anda.' });
-
-        const kirimNilaiDanKunciToken = async () => {
-          try {
-            const nilaiKonversi = Math.round((updatedScore / totalPossiblePoints) * 100);
-
-            await supabase
-              .from('token_ujian')
-              .update({
-                sudah_ujian: true,
-                skor_benar: updatedScore,
-                nilai_akhir: nilaiKonversi
-              })
-              .eq('kode_token', inputToken.trim().toUpperCase())
-              .eq('nama_siswa', studentName.trim().toUpperCase());
-
-            localStorage.removeItem('tycoon_nama_siswa');
-            localStorage.removeItem('tycoon_kelas_siswa');
-            localStorage.removeItem('tycoon_token_aktif');
-            localStorage.removeItem('tycoon_tahap_sekarang');
-            localStorage.removeItem('tycoon_indeks_soal');
-            localStorage.removeItem('tycoon_skor_sekarang');
-            localStorage.removeItem('tycoon_salah_sekarang');
-            localStorage.removeItem('tycoon_array_terakhir');
-
-            setGameLogs((prev) => [...prev, `🟢 Sukses: Seluruh lembar evaluasi dan enkripsi skor akhir berhasil diunggah ke cloud database Guru.`]);
-          } catch (err) {
-            console.error("Gagal mengunci token di server:", err);
-            setGameLogs((prev) => [...prev, `⚠️ Peringatan: Gagal sinkronisasi data cloud, progres tetap aman di penyimpanan lokal.`]);
-          }
-        };
-
-        kirimNilaiDanKunciToken();
-
-      } else {
-        // Tahan laju perpindahan babak otomatis, simpan data sementara, dan munculkan Pop-up!
-        const nextStage = currentStage + 1;
-        setPendingNextStage({
-          stageNum: nextStage,
-          targetScore: updatedScore
-        });
-        setShowStageConfirmPopup(true);
-      }
-    }
+    } else if (indeksBaru === maxQuestions) {
+    // Jika menekan "Selanjutnya" di soal terakhir, pemicu Jendela Pop-up muncul!
+    setShowStageConfirmPopup(true);
+  }
   };
 
-  // Fungsi pengeksekusi jika siswa menekan tombol "LANJUT" di Pop-up
+  // 🌟 ENGINE UTAMA: Hitung skor massal satu paket tahap ketika klik "LANJUT"
   const eksekusiPindahTahapResmi = () => {
-    if (!pendingNextStage) return;
+    let totalSkorBaru = score;
+    let totalSalahBaru = incorrectAttempts;
 
-    const { stageNum, targetScore } = pendingNextStage;
+    // Looping pemeriksaan seluruh jawaban di Tahap ini secara rahasia
+    stageQuestions.forEach((soal, idx) => {
+      let jawabanSiswa = (stageAnswers[idx] || '').trim().toUpperCase();
+      
+      if (currentStage === 1 && soal.mode === 'switch') {
+        const sw = stageAnswers[`switch_${idx}`] || [0, 0, 0, 0, 0];
+        const calculatedDecimal = sw.reduce((acc, bit, i) => acc + (bit * [16, 8, 4, 2, 1][i]), 0);
+        if (calculatedDecimal === soal.targetNum) totalSkorBaru++; else totalSalahBaru++;
+        return;
+      }
 
-    setScore(targetScore);
+      if (currentStage === 2 && soal.mode === 'interactive-circuit') {
+        const gate = stageAnswers[`circuit_${idx}`] || { G1: null };
+        if (gate.G1 === soal.correctGates.G1) totalSkorBaru++; else totalSalahBaru++;
+        return;
+      }
 
-    localStorage.setItem('tycoon_tahap_sekarang', String(stageNum));
-    localStorage.setItem('tycoon_indeks_soal', '0');
-    localStorage.setItem('tycoon_skor_sekarang', String(targetScore));
+      if (currentStage === 5) {
+        // Penilaian Parity Grid dihitung aman pasca-pindah (Default terisi benar jika diklik pas)
+        return;
+      }
 
-    setCurrentStage(stageNum);
+      // Validasi text input biasa
+      if (jawabanSiswa === soal.answer.trim().toUpperCase()) {
+        totalSkorBaru++;
+      } else {
+        totalSalahBaru++;
+      }
+    });
+
+    setScore(totalSkorBaru);
+    setIncorrectAttempts(totalSalahBaru);
+
+    if (currentStage === 6) {
+      setIsExamComplete(true);
+      // Kirim hasil akhir ke Supabase
+      const kirimNilaiAkhir = async () => {
+        const nilaiKonversi = Math.round((totalSkorBaru / totalPossiblePoints) * 100);
+        await supabase.from('token_ujian').update({ sudah_ujian: true, skor_benar: totalSkorBaru, nilai_akhir: nilaiKonversi }).eq('kode_token', inputToken.trim().toUpperCase()).eq('nama_siswa', studentName.trim().toUpperCase());
+        localStorage.clear();
+      };
+      kirimNilaiAkhir();
+    } else {
+    const nextStageNum = currentStage + 1;
+    localStorage.setItem('tycoon_tahap_sekarang', String(nextStageNum));
+    setCurrentStage(nextStageNum);
     setQuestionsAnsweredInStage(0);
-    setPlayerAnswer('');
-    setFeedback({ type: 'success', msg: `🚀 TAHAP SELESAI! Membuka akses baru menuju ${STAGE_CONFIG[stageNum].title}!` });
-    logEvent(`Sistem: Berhasil melangkah maju ke Tahap ${stageNum}.`);
-
-    const firstQOfNextStage = generateQuestion(stageNum, 0);
-    setActiveQuestion(firstQOfNextStage);
-
-    if (stageNum === 6) {
-      setCurrentArrayData(firstQOfNextStage ? [...firstQOfNextStage.initialArray] : []);
-      localStorage.setItem('tycoon_array_terakhir', JSON.stringify(firstQOfNextStage ? [...firstQOfNextStage.initialArray] : []));
-      setStudentMoves(0);
-    }
-
-    setPendingNextStage(null);
+    initStageQuestions(nextStageNum);
     setShowStageConfirmPopup(false);
+    // Baris setPendingNextStage(null) di sini sudah dihapus bersih!
+  }
   };
+
+  // Penanganan khusus klik tabel grid Tahap 5 langsung mengunci memori jawaban
+  const handleGridCellClick = (rowIndex, colIndex) => {
+    if (currentStage !== 5 || !activeQuestion) return;
+    const isCorrect = activeQuestion.errorType === 'BARIS' ? rowIndex === activeQuestion.errorIndex : colIndex === activeQuestion.errorIndex;
+    if (isCorrect) setScore(prev => prev + 1); else setIncorrectAttempts(prev => prev + 1);
+    navigasiKeSoal(1);
+  };
+
 
   const handleDragStart = (e, index) => {
     if (currentStage !== 6 || isExamComplete) return;
@@ -968,12 +907,10 @@ export default function App() {
 
     if (isSorted) {
       if (newMovesCount <= activeQuestion.maxEffectiveMoves) {
-        logEvent(`👑 Sempurna! Kamu merapikan struktur Soal ${qNum} hanya dalam ${newMovesCount} langkah aksi.`);
-        processCorrectAnswer();
+        navigasiKeSoal(1); // ✅ Langsung amankan dan maju nomor
       } else {
-        logEvent(`⚠️ Cukup Baik! Tetapi gerakanmu kurang efisien (${newMovesCount} langkah). Pengurangan skor diterapkan.`);
         setIncorrectAttempts(prev => prev + 1);
-        processCorrectAnswer();
+        navigasiKeSoal(1); // ✅ Lewat batas, catat salah tapi tetap maju
       }
     }
   };
@@ -982,10 +919,6 @@ export default function App() {
     e.preventDefault();
   };
 
-  const processIncorrectAnswer = () => {
-    setIncorrectAttempts((prev) => prev + 1);
-    setFeedback({ type: 'error', msg: '❌ Logika keliru! Periksa kembali alur datanya dan coba lagi.' });
-  };
 
   const totalPossiblePoints = 44;
 
@@ -1377,18 +1310,13 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* ✅ UPDATE: Menyesuaikan pemicu simpan sirkuit dengan sistem navigasi paket */}
                       <div className="mt-4 md:mt-6 max-w-xs mx-auto">
                         <button
                           type="button"
                           onClick={() => {
-                            if (circuitGates.G1 === activeQuestion.correctGates.G1) {
-                              processCorrectAnswer();
-                            } else {
-                              logEvent(`❌ Salah! Aliran listrik sirkuit gagal menyalakan target sasaran. Angka saklar biner terpaksa diacak ulang demi keamanan.`);
-                              processIncorrectAnswer();
-                              setActiveQuestion(generateQuestion(2, questionsAnsweredInStage));
-                              setCircuitGates({ G1: null, G2: null, G3: null });
-                            }
+                            // Cukup geser nomor ke depan, jawaban sirkuit siswa sudah otomatis aman terkunci di dalam stageAnswers
+                            navigasiKeSoal(1);
                           }}
                           className="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-2 px-3 md:py-3 md:px-4 border-2 md:border-4 border-black font-black uppercase tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-[10px] md:text-xs transition-all cursor-pointer"
                         >
@@ -1398,30 +1326,41 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* FORM TEXT INPUT BIASA */}
+                  {/* PENGGANTI INPUT FORM TEXT LAMA: MENDUKUNG RE-CHECKING SISWA */}
                   {((currentStage === 2 && activeQuestion?.mode !== 'interactive-circuit') ||
                     (currentStage === 1 && activeQuestion?.mode !== 'switch') ||
-                    currentStage === 4) && (
+                    currentStage === 4 || currentStage === 3) && (
                       <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={playerAnswer}
-                            onChange={(e) => setPlayerAnswer(e.target.value)}
-                            placeholder="Ketik jawaban kamu di sini..."
-                            className="border-2 md:border-4 border-black p-2 md:p-3 grow font-bold focus:outline-none focus:bg-yellow-50 text-sm md:text-base uppercase shadow-inner placeholder:text-stone-400"
-                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                          />
-                          <button
-                            type="button"
-                            onClick={checkAnswer}
-                            className="bg-black text-white py-2 px-4 md:px-8 font-black uppercase tracking-wider border-2 md:border-4 border-black hover:bg-stone-800 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer text-xs md:text-sm"
-                          >
-                            SIMPAN JAWABAN
-                          </button>
-                        </div>
+                        <input
+                          type={currentStage === 3 ? "number" : "text"}
+                          value={playerAnswer}
+                          onChange={(e) => setPlayerAnswer(e.target.value)}
+                          placeholder="Ketik jawaban kamu di sini..."
+                          className="w-full border-2 md:border-4 border-black p-2 md:p-3 font-bold focus:outline-none focus:bg-yellow-50 text-sm md:text-base uppercase shadow-inner placeholder:text-stone-400"
+                        />
                       </div>
                     )}
+
+                  {/* 🌟 PANEL BARU: TOMBOL NAVIGASI MAJU MUNDUR SOAL */}
+                  <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t-2 border-stone-200">
+                    <button
+                      type="button"
+                      disabled={questionsAnsweredInStage === 0}
+                      onClick={() => navigasiKeSoal(-1)}
+                      className="bg-stone-200 text-black py-2 px-4 font-black border-2 md:border-4 border-black hover:bg-stone-300 disabled:opacity-40 text-xs md:text-sm cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase"
+                    >
+                      ⬅️ Soal Sebelumnya
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigasiKeSoal(1)}
+                      className="bg-black text-white py-2 px-4 font-black border-2 md:border-4 border-black hover:bg-stone-800 text-xs md:text-sm cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase"
+                    >
+                      {questionsAnsweredInStage === (currentStage === 1 ? 8 : (currentStage === 2 || currentStage === 4 ? 9 : 4)) 
+                        ? "🔒 SELESAI TAHAP" 
+                        : "Soal Berikutnya ➡️"}
+                    </button>
+                  </div>
 
                   {/* TAMPILAN TAHAP 3 NEON GRID */}
                   {currentStage === 3 && activeQuestion && (
@@ -1596,7 +1535,10 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowStageConfirmPopup(false)}
+                    onClick={() => {
+                      setQuestionsAnsweredInStage(0); // 🌟 Reset kembali ke Soal Pertama Tahap berjalan!
+                      setShowStageConfirmPopup(false);
+                    }}
                     className="bg-stone-200 hover:bg-stone-300 text-black border-2 border-black p-2 font-black uppercase text-[10px] tracking-wider cursor-pointer"
                   >
                     🔍 Periksa Lagi
