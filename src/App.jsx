@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 
 // --- KONFIGURASI TINGKATAN (STAGES) SESUAI KISI-KISI ---
 const STAGE_CONFIG = {
@@ -108,7 +109,6 @@ function generateDynamicSquareParityGrid(questionIndex) {
 function generateQuestion(stage, questionIndex = 0) {
   let type = STAGE_CONFIG[stage].allowedAssets[0];
 
-  // FIX UTAMA: Kunci tipe khusus Tahap 6 langsung ke 'INSERTION-SORT' agar tidak terlempar null acak
   if (stage === 6) {
     type = 'INSERTION-SORT';
   }
@@ -196,8 +196,6 @@ function generateQuestion(stage, questionIndex = 0) {
 
   if (type === 'BASIC-IO') {
     const currentQuestionNum = questionIndex + 1;
-
-    // 🎲 POOL DATA ACAK UNTUK VARIASI MASAL KESULITAN 1 (ANTI-CONTEK)
     const varNames = ['perangkat', 'simpul', 'klien', 'muatan', 'paket', 'terminal', 'port'];
     const systems = ['UTAMA', 'TEPI', 'AKAR', 'HOST', 'TAUTAN', 'GERBANG', 'ZONA'];
     const alerts = ['AWAS', 'PERINGATAN', 'INFO', 'SINKRON', 'LOG', 'GAGAL', 'LULUS'];
@@ -207,16 +205,10 @@ function generateQuestion(stage, questionIndex = 0) {
     const sys = systems[Math.floor(Math.random() * systems.length)];
     const alr = alerts[Math.floor(Math.random() * alerts.length)];
 
-    // 🔌 GENERATE NILAI ACAK SAKLAR UNTUK KESULITAN 2
     const inputA = Math.random() > 0.5 ? 1 : 0;
     const inputB = Math.random() > 0.5 ? 1 : 0;
     const inputC = Math.random() > 0.5 ? 1 : 0;
 
-    // =========================================================================
-    // 🔥 KESULITAN 1: ANALISIS KODE SEMU (SOAL 1 - 5)
-    // =========================================================================
-
-    // --- SOAL 1: ALUR INPUT & OUTPUT STRINGS ---
     if (questionIndex === 0) {
       return {
         type,
@@ -232,12 +224,10 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: `${alr}_${sys}_TERHUBUNG`
       };
     }
-
-    // --- SOAL 2: OPERASI MATEMATIKA VARIABEL BERANTAI ---
     else if (questionIndex === 1) {
-      const baseNum = Math.floor(Math.random() * 6) + 4;       // 4 s.d 9
-      const multiplier = Math.floor(Math.random() * 3) + 2;    // 2 s.d 4
-      const adjuster = Math.floor(Math.random() * 4) + 1;      // 1 s.d 4
+      const baseNum = Math.floor(Math.random() * 6) + 4;
+      const multiplier = Math.floor(Math.random() * 3) + 2;
+      const adjuster = Math.floor(Math.random() * 4) + 1;
       const finalAns = (baseNum * multiplier) - (baseNum + adjuster);
 
       return {
@@ -253,10 +243,8 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: finalAns.toString()
       };
     }
-
-    // --- SOAL 3: PERCABANGAN LOGIKA TUNGGAL (IF-ELSE) ---
     else if (questionIndex === 2) {
-      const limit = Math.floor(Math.random() * 4) * 10 + 60;   // 60, 70, 80, 90
+      const limit = Math.floor(Math.random() * 4) * 10 + 60;
       const actualValue = Math.random() > 0.5 ? (limit + 15) : (limit - 15);
       const r1 = responses[Math.floor(Math.random() * 3)];
       const r2 = responses[Math.floor(Math.random() * 3) + 3];
@@ -279,8 +267,6 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: finalAns
       };
     }
-
-    // --- SOAL 4: KONDISI BERLAPIS / SEKUENSIAL (3 Lapisan Sieve IF) ---
     else if (questionIndex === 3) {
       const initialScore = Math.random() > 0.5 ? 45 : 15;
       const triggerA = Math.floor(Math.random() * 5) + 8;
@@ -304,8 +290,6 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: scoreEvaluator.toString()
       };
     }
-
-    // --- SOAL 5: GERBANG LOGIKA GABUNGAN RELEVAN ---
     else if (questionIndex === 4) {
       const condA = Math.random() > 0.5;
       const condB = Math.random() > 0.5;
@@ -333,15 +317,8 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: finalAns
       };
     }
-
-    // =========================================================================
-    // 📊 KESULITAN 2: SAKLAR LISTRIK PROGRESIF MULTI-SWITCH (SOAL 6 - 10)
-    // =========================================================================
-
-    // --- SOAL 6: 2 SAKLAR STANDARD (SERI / AND) ---
     else if (questionIndex === 5) {
       const g1Correct = (inputA === 1 && inputB === 1) ? 1 : 0;
-
       return {
         type,
         qNum: currentQuestionNum,
@@ -352,12 +329,9 @@ function generateQuestion(stage, questionIndex = 0) {
         correctGates: { G1: g1Correct }
       };
     }
-
-    // --- SOAL 7: 2 SAKLAR DENGAN INVERSI (NOT + SERI) ---
     else if (questionIndex === 6) {
-      const realA = inputA === 1 ? 0 : 1; // NOT A
+      const realA = inputA === 1 ? 0 : 1;
       const g1Correct = (realA === 1 && inputB === 1) ? 1 : 0;
-
       return {
         type,
         qNum: currentQuestionNum,
@@ -368,12 +342,9 @@ function generateQuestion(stage, questionIndex = 0) {
         correctGates: { G1: g1Correct }
       };
     }
-
-    // --- SOAL 8: 3 SAKLAR GABUNGAN (SERI + PARALEL) ---
     else if (questionIndex === 7) {
       const jalurSeri = (inputA === 1 && inputB === 1) ? 1 : 0;
       const g1Correct = (jalurSeri === 1 || inputC === 1) ? 1 : 0;
-
       return {
         type,
         qNum: currentQuestionNum,
@@ -384,14 +355,11 @@ function generateQuestion(stage, questionIndex = 0) {
         correctGates: { G1: g1Correct }
       };
     }
-
-    // --- SOAL 9: 3 SAKLAR KOMPLEKS + DOUBLE INVERSI ---
     else if (questionIndex === 8) {
-      const realA = inputA === 1 ? 0 : 1; // NOT A
-      const realC = inputC === 1 ? 0 : 1; // NOT C
+      const realA = inputA === 1 ? 0 : 1;
+      const realC = inputC === 1 ? 0 : 1;
       const jalurSeri = (realA === 1 && inputB === 1) ? 1 : 0;
       const g1Correct = (jalurSeri === 1 || realC === 1) ? 1 : 0;
-
       return {
         type,
         qNum: currentQuestionNum,
@@ -402,15 +370,11 @@ function generateQuestion(stage, questionIndex = 0) {
         correctGates: { G1: g1Correct }
       };
     }
-
-    // --- SOAL 10: MINI BOSS: 4 SAKLAR MATRIKS GANDA (DOUBLE SERI + PARALEL) ---
     else if (questionIndex === 9) {
       const inputD = Math.random() > 0.5 ? 1 : 0;
-
-      const jalurAtas = (inputA === 1 && inputB === 1) ? 1 : 0; // A AND B
-      const jalurBawah = (inputC === 1 && inputD === 1) ? 1 : 0; // C AND D
-      const g1Correct = (jalurAtas === 1 || jalurBawah === 1) ? 1 : 0; // Atas OR Bawah
-
+      const jalurAtas = (inputA === 1 && inputB === 1) ? 1 : 0;
+      const jalurBawah = (inputC === 1 && inputD === 1) ? 1 : 0;
+      const g1Correct = (jalurAtas === 1 || jalurBawah === 1) ? 1 : 0;
       return {
         type,
         qNum: currentQuestionNum,
@@ -428,95 +392,49 @@ function generateQuestion(stage, questionIndex = 0) {
     let textQuestion = "";
     let correctAnswer = "";
 
-    // --- SOAL 1: LINEAR ASCENDING (Penjumlahan Tetap) ---
     if (questionIndex === 0) {
-      const start = Math.floor(Math.random() * 20) + 5; 
-      const step = Math.floor(Math.random() * 5) + 3;   
-
-      const n1 = start;
-      const n2 = n1 + step;
-      const n3 = n2 + step;
-      const n4 = n3 + step;
-      const ans = n4 + step;
-
+      const start = Math.floor(Math.random() * 20) + 5;
+      const step = Math.floor(Math.random() * 5) + 3;
+      const n1 = start, n2 = n1 + step, n3 = n2 + step, n4 = n3 + step;
       textQuestion = `[SOAL 1 - NAIK LINEAR] Optimasi kecepatan data! Tentukan angka berikutnya pada pola penambahan tetap ini: ${n1}, ${n2}, ${n3}, ${n4}, ___`;
-      correctAnswer = ans.toString();
+      correctAnswer = (n4 + step).toString();
     }
-
-    // --- SOAL 2: GEOMETRIC PROGRESSION (Perkalian Tetap) ---
     else if (questionIndex === 1) {
-      const start = Math.floor(Math.random() * 4) + 2; 
-
-      const n1 = start;
-      const n2 = n1 * 2; 
-      const n3 = n2 * 2;
-      const n4 = n3 * 2;
-      const ans = n4 * 2;
-
+      const start = Math.floor(Math.random() * 4) + 2;
+      const n1 = start, n2 = n1 * 2, n3 = n2 * 2, n4 = n3 * 2;
       textQuestion = `[SOAL 2 - DERET GEOMETRI] Penggandaan beban memori! Analisis faktor kelipatan tetap untuk menentukan muatan berikutnya: ${n1}, ${n2}, ${n3}, ${n4}, ___`;
-      correctAnswer = ans.toString();
+      correctAnswer = (n4 * 2).toString();
     }
-
-    // --- SOAL 3: LINEAR DESCENDING (Pengurangan Tetap) ---
     else if (questionIndex === 2) {
-      const start = Math.floor(Math.random() * 30) + 60; 
-      const step = Math.floor(Math.random() * 4) + 5;   
-
-      const n1 = start;
-      const n2 = n1 - step;
-      const n3 = n2 - step;
-      const n4 = n3 - step;
-      const ans = n4 - step;
-
+      const start = Math.floor(Math.random() * 30) + 60;
+      const step = Math.floor(Math.random() * 4) + 5;
+      const n1 = start, n2 = n1 - step, n3 = n2 - step, n4 = n3 - step;
       textQuestion = `[SOAL 3 - TURUN LINEAR] Pelepasan ruang penyimpanan! Analisis pengurangan tetap secara mundur untuk menebak angka berikutnya: ${n1}, ${n2}, ${n3}, ${n4}, ___`;
-      correctAnswer = ans.toString();
+      correctAnswer = (n4 - step).toString();
     }
-
-    // --- SOAL 4: ALTERNATING SIGNS (Operasi Selang-Seling) ---
     else if (questionIndex === 3) {
-      const start = Math.floor(Math.random() * 20) + 10; 
-      const up = Math.floor(Math.random() * 3) + 4;      
-      const down = Math.floor(Math.random() * 2) + 2;    
-
-      const n1 = start;
-      const n2 = n1 + up;
-      const n3 = n2 - down;
-      const n4 = n3 + up;
-      const n5 = n4 - down;
-      const ans = n5 + up; 
-
+      const start = Math.floor(Math.random() * 20) + 10;
+      const up = Math.floor(Math.random() * 3) + 4;
+      const down = Math.floor(Math.random() * 2) + 2;
+      const n1 = start, n2 = n1 + up, n3 = n2 - down, n4 = n3 + up, n5 = n4 - down;
       textQuestion = `[SOAL 4 - POLA SELANG-SELING] Sistem mendeteksi dua perintah perhitungan (+ / -) yang berjalan bergantian! Tebak angka selanjutnya: ${n1}, ${n2}, ${n3}, ${n4}, ${n5}, ___`;
-      correctAnswer = ans.toString();
+      correctAnswer = (n5 + up).toString();
     }
-
-    // --- SOAL 5: DOUBLE AND ADJUST (Mini Boss Level) ---
     else if (questionIndex === 4) {
-      const start = Math.floor(Math.random() * 4) + 2; 
-      const isPlus = Math.random() > 0.5;              
+      const start = Math.floor(Math.random() * 4) + 2;
+      const isPlus = Math.random() > 0.5;
       const adjust = isPlus ? 1 : -1;
-
-      const n1 = start;
-      const n2 = (n1 * 2) + adjust;
-      const n3 = (n2 * 2) + adjust;
-      const n4 = (n3 * 2) + adjust;
-      const ans = (n4 * 2) + adjust;
-
+      const n1 = start, n2 = (n1 * 2) + adjust, n3 = (n2 * 2) + adjust, n4 = (n3 * 2) + adjust;
       const hintText = isPlus ? "dikali 2 lalu ditambah 1" : "dikali 2 lalu dikurangi 1";
       textQuestion = `[SOAL 5 - UJIAN BOSS: GANDAKAN DAN SESUAIKAN] Titik perulangan akhir! Setiap blok mematuhi aturan berantai [ ${hintText} ]. Tentukan isi angka pada blok ujung: ${n1}, ${n2}, ${n3}, ${n4}, ___`;
-      correctAnswer = ans.toString();
+      correctAnswer = ((n4 * 2) + adjust).toString();
     }
 
-    return {
-      type,
-      qNum: currentQuestionNum,
-      question: textQuestion,
-      answer: correctAnswer
-    };
+    return { type, qNum: currentQuestionNum, question: textQuestion, answer: correctAnswer };
   }
 
   if (type === 'CAESAR-CIPHER') {
     const currentQuestionNum = questionIndex + 1;
-    // 🟢 HANYA TAHAP 4 YANG MENGGUNAKAN LOGIC INDEX BERPASANGAN
     const logicIndex = Math.floor(questionIndex / 2);
     let textQuestion = "";
     let correctAnswer = "";
@@ -557,7 +475,6 @@ function generateQuestion(stage, questionIndex = 0) {
   }
 
   if (type === 'INSERTION-SORT') {
-    // Definisi Kuantitas Balok sesuai Formasi Baru
     const blockCounts = [15, 15, 18, 18, 20];
     const gridSize = blockCounts[questionIndex] || 15;
     const currentQuestionNum = questionIndex + 1;
@@ -565,28 +482,22 @@ function generateQuestion(stage, questionIndex = 0) {
     let scrambled = [];
     let textQuestion = "";
 
-    // --- SOAL 3: ALFANUMERIK (HURUF & ANGKA) ---
     if (questionIndex === 2) {
       const letters = ['A', 'B', 'C'];
       let pool = [];
-      // Buat kombinasi unik seperti A1, A2, B1, B2...
       letters.forEach(l => {
         for (let n = 1; n <= 9; n++) pool.push(`${l}${n}`);
       });
-
-      // Ambil acak sesuai kuantitas (18 balok)
       while (scrambled.length < gridSize) {
         const randIdx = Math.floor(Math.random() * pool.length);
         const code = pool.splice(randIdx, 1)[0];
         if (!scrambled.includes(code)) scrambled.push(code);
       }
-
       textQuestion = `[SOAL 3 - KODE ALFANUMERIK] Seret dan susun 18 blok rak penyimpan data di bawah berdasarkan abjad HURUF terlebih dahulu (A s.d C), lalu diikuti URUTAN ANGKA di belakangnya (Contoh: A1, A2, B1, B2)!`;
     }
-    // --- SOAL 1, 2, 4, 5: ANGKA PULUHAN ACAK UNIK ---
     else {
       while (scrambled.length < gridSize) {
-        const randomValue = Math.floor(Math.random() * 90) + 10; // 10 s.d 99
+        const randomValue = Math.floor(Math.random() * 90) + 10;
         if (!scrambled.includes(randomValue)) scrambled.push(randomValue);
       }
 
@@ -601,7 +512,6 @@ function generateQuestion(stage, questionIndex = 0) {
       }
     }
 
-    // Set batas toleransi langkah efektif yang menantang
     const maxEffectiveMoves = gridSize + (questionIndex * 5);
 
     return {
@@ -628,18 +538,66 @@ export default function App() {
 
   const [score, setScore] = useState(0);
   const [incorrectAttempts, setIncorrectAttempts] = useState(0);
-
   const [feedback, setFeedback] = useState({ type: '', msg: '' });
   const [isExamComplete, setIsExamComplete] = useState(false);
   const [gameLogs, setGameLogs] = useState(['Server Ujian Aktif. Menginisialisasi komponen logika secara dinamis.']);
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [studentName, setStudentName] = useState('');
+  const [studentClass, setStudentClass] = useState('');
+  const [inputToken, setInputToken] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // State pengontrol kemunculan jendela pop-up konfirmasi perpindahan babak
+  const [showStageConfirmPopup, setShowStageConfirmPopup] = useState(false);
+  const [pendingNextStage, setPendingNextStage] = useState(null);
+
   const logEndRef = useRef(null);
+
+  const logEvent = () => { };
+
+  useEffect(() => {
+    const pulihkanSesiSiswa = () => {
+      const savedName = localStorage.getItem('tycoon_nama_siswa');
+      const savedClass = localStorage.getItem('tycoon_kelas_siswa');
+      const savedToken = localStorage.getItem('tycoon_token_aktif');
+      const savedStage = localStorage.getItem('tycoon_tahap_sekarang');
+      const savedQuestionIndex = localStorage.getItem('tycoon_indeks_soal');
+      const savedScore = localStorage.getItem('tycoon_skor_sekarang');
+      const savedIncorrect = localStorage.getItem('tycoon_salah_sekarang');
+
+      if (savedName && savedClass && savedToken && savedStage) {
+        setStudentName(savedName);
+        setStudentClass(savedClass);
+        setInputToken(savedToken);
+        setCurrentStage(Number(savedStage));
+        setQuestionsAnsweredInStage(Number(savedQuestionIndex || 0));
+        setScore(Number(savedScore || 0));
+        setIncorrectAttempts(Number(savedIncorrect || 0));
+        setIsAuthenticated(true);
+
+        const q = generateQuestion(Number(savedStage), Number(savedQuestionIndex || 0));
+        setActiveQuestion(q);
+        if (Number(savedStage) === 6 && q && q.initialArray) {
+          const savedArray = localStorage.getItem('tycoon_array_terakhir');
+          if (savedArray) {
+            setCurrentArrayData(JSON.parse(savedArray));
+          } else {
+            setCurrentArrayData([...q.initialArray]);
+          }
+        }
+
+        setGameLogs((prev) => [...prev, `💾 Sistem: Berhasil memulihkan progres ujian ${savedName} di Tahap ${savedStage} secara otomatis dari memori HP.`]);
+      }
+    };
+
+    pulihkanSesiSiswa();
+  }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [gameLogs]);
 
-  // FIX SINKRONISASI: Menjamin array ter-load instan saat bypass dev atau perpindahan stage otomatis terpicu
   useEffect(() => {
     if (currentStage === 6 && (!activeQuestion || activeQuestion.type !== 'INSERTION-SORT')) {
       const q = generateQuestion(6, questionsAnsweredInStage);
@@ -653,8 +611,116 @@ export default function App() {
     }
   }, [currentStage, activeQuestion, questionsAnsweredInStage]);
 
-  const logEvent = (message) => {
-    setGameLogs((prev) => [...prev, message]);
+  const handleLoginUjian = async () => {
+    if (!studentName.trim()) {
+      setFeedback({ type: 'error', msg: 'NAMA PANGGILAN/LENGKAP WAJIB DIISI!' });
+      return;
+    }
+    if (!inputToken.trim()) {
+      setFeedback({ type: 'error', msg: 'KODE TOKEN UJIAN WAJIB DIISI!' });
+      return;
+    }
+
+    setIsLoading(true);
+    setFeedback({ type: '', msg: '' });
+
+    try {
+      const { data: dataSiswa, error } = await supabase
+        .from('token_ujian')
+        .select('*')
+        .eq('kode_token', inputToken.trim().toUpperCase())
+        .eq('nama_siswa', studentName.trim().toUpperCase())
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!dataSiswa) {
+        setFeedback({ type: 'error', msg: 'KODE TOKEN ATAU NAMA LENGKAP SALAH / TIDAK TERDAFTAR DI KELAS INI!' });
+        setIsLoading(false);
+        return;
+      }
+
+      if (dataSiswa.sudah_ujian) {
+        setFeedback({ type: 'error', msg: '❌ KODE TOKEN INI SUDAH HANGUS! ANDA TIDAK BISA MENGIKUTI UJIAN KEMBALI.' });
+        setIsLoading(false);
+        return;
+      }
+
+      setStudentClass(dataSiswa.kelas);
+      setIsAuthenticated(true);
+
+      localStorage.setItem('tycoon_token_aktif', inputToken.trim().toUpperCase());
+      localStorage.setItem('tycoon_nama_siswa', studentName.trim().toUpperCase());
+      localStorage.setItem('tycoon_kelas_siswa', dataSiswa.kelas);
+
+      const savedStage = localStorage.getItem('tycoon_tahap_sekarang');
+      if (savedStage) {
+        const numStage = parseInt(savedStage, 10);
+        setCurrentStage(numStage);
+        setScore(parseInt(localStorage.getItem('tycoon_skor_sekarang') || '0', 10));
+        setIncorrectAttempts(parseInt(localStorage.getItem('tycoon_salah_sekarang') || '0', 10));
+        setQuestionsAnsweredInStage(parseInt(localStorage.getItem('tycoon_indeks_soal') || '0', 10));
+
+        logEvent(`💾 Sistem: Berhasil memulihkan progres ujian terakhirmu di kelas.`);
+      } else {
+        setCurrentStage(1);
+        logEvent(`🟢 Sistem: Sesi ujian cloud diverifikasi. Selamat bekerja, ${studentName.trim().toUpperCase()}!`);
+      }
+
+      setFeedback({ type: 'success', msg: 'Akses ujian berhasil dibuka! Semoga sukses.' });
+
+    } catch (err) {
+      console.error('Kendala koneksi otentikasi:', err);
+      setFeedback({ type: 'error', msg: 'Gagal menghubungi server. Periksa jaringan internet HP!' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const unduhRekapNilaiExcel = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('token_ujian')
+        .select('nama_siswa, kelas, kode_token, sudah_ujian, skor_benar, nilai_akhir')
+        .order('kelas', { ascending: true })
+        .order('nama_siswa', { ascending: true });
+
+      if (error || !data) {
+        alert("Gagal menarik data dari server cloud Supabase.");
+        return;
+      }
+
+      let kontenCSV = "No;Nama Siswa;Kelas;Kode Token;Status Ujian;Skor Benar (Mentah);Nilai Rapor (1-100)\n";
+
+      data.forEach((siswa, indeks) => {
+        const statusText = siswa.sudah_ujian ? "SELESAI" : "BELUM/SEDANG UJIAN";
+        const skorText = `${siswa.skor_benar} / 44`;
+        kontenCSV += `${indeks + 1};${siswa.nama_siswa};${siswa.kelas};${siswa.kode_token};${statusText};${skorText};${siswa.nilai_akhir}\n`;
+      });
+
+      const blobData = new Blob([kontenCSV], { type: 'text/csv;charset=utf-8;' });
+      const urlUnduh = URL.createObjectURL(blobData);
+      const linkPemicu = document.createElement("a");
+
+      linkPemicu.setAttribute("href", urlUnduh);
+      linkPemicu.setAttribute("download", `REKAP_NILAI_ALGORITHM_TYCOON_${studentClass || 'VII'}.csv`);
+      linkPemicu.style.visibility = 'hidden';
+      document.body.appendChild(linkPemicu);
+      linkPemicu.click();
+      document.body.removeChild(linkPemicu);
+
+    } catch (err) {
+      console.error("Gagal mengunduh laporan:", err);
+    }
+  };
+
+  const checkTokenUntukAksesGuru = (teksInput) => {
+    setInputToken(teksInput);
+    if (teksInput.trim().toUpperCase() === 'GURU-MASTER') {
+      setIsAuthenticated(true);
+      setCurrentStage(999);
+      logEvent("Sistem: Otorisasi Admin Berhasil. Membuka panel rekapitulasi nilai utama.");
+    }
   };
 
   const checkAnswer = () => {
@@ -666,11 +732,9 @@ export default function App() {
         const correctTarget = activeQuestion.answer.trim().toUpperCase();
 
         if (finalSubmission === correctTarget) {
-          processCorrectAnswer();
+          processCorrectAnswer(true); // ✅ Benar
         } else {
-          logEvent(`❌ Salah! Jawaban tidak tepat. Soal otomatis diacak ulang.`);
-          processIncorrectAnswer();
-          setActiveQuestion(generateQuestion(1, questionsAnsweredInStage));
+          processCorrectAnswer(false); // ✅ Salah, tapi tetep maju nomor
         }
         return;
       }
@@ -681,12 +745,10 @@ export default function App() {
         const isCorrect = calculatedDecimal === activeQuestion.targetNum;
 
         if (isCorrect) {
-          processCorrectAnswer();
+          processCorrectAnswer(true); // ✅ Benar
           setBinarySwitches([0, 0, 0, 0, 0]);
         } else {
-          logEvent(`❌ Salah! Susunan saklar biner saat ini bernilai ${calculatedDecimal}. Soal otomatis diacak ulang.`);
-          processIncorrectAnswer();
-          setActiveQuestion(generateQuestion(1, questionsAnsweredInStage));
+          processCorrectAnswer(false); // ✅ Salah, tapi tetep maju nomor
           setBinarySwitches([0, 0, 0, 0, 0]);
         }
         return;
@@ -696,9 +758,9 @@ export default function App() {
     const finalSubmission = playerAnswer.trim().toUpperCase();
     const correctTarget = activeQuestion.answer.trim().toUpperCase();
     if (finalSubmission === correctTarget) {
-      processCorrectAnswer();
+      processCorrectAnswer(true);
     } else {
-      processIncorrectAnswer();
+      processCorrectAnswer(false);
     }
   };
 
@@ -710,35 +772,28 @@ export default function App() {
       : colIndex === activeQuestion.errorIndex;
 
     if (isCorrectGridClick) {
-      logEvent(`🟢 Tepat! Koordinat lokasi [Baris B${activeQuestion.gridSize - rowIndex}, Kolom K${colIndex + 1}] terbukti bermasalah.`);
-      processCorrectAnswer();
+      processCorrectAnswer(true); // ✅ Benar, lanjut nomor berikut
     } else {
-      logEvent(`❌ Salah! Deteksi koordinat meleset. Sistem mengacak ulang susunan grid sel data.`);
-      processIncorrectAnswer();
-      setActiveQuestion(generateQuestion(5, questionsAnsweredInStage));
+      processCorrectAnswer(false); // ✅ Salah, tetep lanjut nomor berikut
     }
   };
 
   const processCorrectAnswer = () => {
-    setScore((prev) => prev + 1);
+    const updatedScore = score + 1;
     setFeedback({ type: 'success', msg: 'Luar biasa! Analisis jawaban kamu benar.' });
 
-    // 🟢 PERBAIKAN UTAMA: Mengunci batas maksimal soal di setiap Stage secara presisi
-    let maxQuestionsForThisStage = 3; 
-
-    if (currentStage === 1) {
-      maxQuestionsForThisStage = 9;  // Tahap 1: 9 Soal biner
-    } else if (currentStage === 2) {
-      maxQuestionsForThisStage = 10; // Tahap 2: 5 Soal Kode Semu + 5 Soal Sirkuit Interaktif
-    } else if (currentStage === 4) {
-      maxQuestionsForThisStage = 10; // Tahap 4: 10 Soal Sandi Kriptografi
-    } else if (currentStage === 3 || currentStage === 5 || currentStage === 6) {
-      maxQuestionsForThisStage = 5;  // Tahap 3, 5, dan 6: 5 Soal bertahap
-    }
+    let maxQuestionsForThisStage = 3;
+    if (currentStage === 1) maxQuestionsForThisStage = 9;
+    else if (currentStage === 2) maxQuestionsForThisStage = 10;
+    else if (currentStage === 4) maxQuestionsForThisStage = 10;
+    else if (currentStage === 3 || currentStage === 5 || currentStage === 6) maxQuestionsForThisStage = 5;
 
     const nextCount = questionsAnsweredInStage + 1;
 
     if (nextCount < maxQuestionsForThisStage) {
+      localStorage.setItem('tycoon_indeks_soal', String(nextCount));
+      localStorage.setItem('tycoon_skor_sekarang', String(updatedScore));
+
       setQuestionsAnsweredInStage(nextCount);
       setPlayerAnswer('');
 
@@ -747,35 +802,92 @@ export default function App() {
 
       if (currentStage === 6) {
         setCurrentArrayData(nextQ ? [...nextQ.initialArray] : []);
+        localStorage.setItem('tycoon_array_terakhir', JSON.stringify(nextQ ? [...nextQ.initialArray] : []));
         setStudentMoves(0);
       }
     } else {
-      // Jalur jika semua nomor di stage ini sudah habis dikerjakan
+      // === JALUR JIKA SEMUA NOMOR DI TAHAP INI SUDAH HABIS DIKERJAKAN ===
       if (currentStage === 6) {
         setIsExamComplete(true);
         setActiveQuestion(null);
         setPlayerAnswer('');
-        setFeedback({ type: 'success', msg: '🎉 UJIAN SELESAI! Terminal berhasil menyimpan semua hasil kerjamu.' });
+        setFeedback({ type: 'success', msg: '🎉 UJIAN SELESAI! Terminal berhasil mengunci seluruh berkas nilai Anda.' });
+
+        const kirimNilaiDanKunciToken = async () => {
+          try {
+            const nilaiKonversi = Math.round((updatedScore / totalPossiblePoints) * 100);
+
+            await supabase
+              .from('token_ujian')
+              .update({
+                sudah_ujian: true,
+                skor_benar: updatedScore,
+                nilai_akhir: nilaiKonversi
+              })
+              .eq('kode_token', inputToken.trim().toUpperCase())
+              .eq('nama_siswa', studentName.trim().toUpperCase());
+
+            localStorage.removeItem('tycoon_nama_siswa');
+            localStorage.removeItem('tycoon_kelas_siswa');
+            localStorage.removeItem('tycoon_token_aktif');
+            localStorage.removeItem('tycoon_tahap_sekarang');
+            localStorage.removeItem('tycoon_indeks_soal');
+            localStorage.removeItem('tycoon_skor_sekarang');
+            localStorage.removeItem('tycoon_salah_sekarang');
+            localStorage.removeItem('tycoon_array_terakhir');
+
+            setGameLogs((prev) => [...prev, `🟢 Sukses: Seluruh lembar evaluasi dan enkripsi skor akhir berhasil diunggah ke cloud database Guru.`]);
+          } catch (err) {
+            console.error("Gagal mengunci token di server:", err);
+            setGameLogs((prev) => [...prev, `⚠️ Peringatan: Gagal sinkronisasi data cloud, progres tetap aman di penyimpanan lokal.`]);
+          }
+        };
+
+        kirimNilaiDanKunciToken();
+
       } else {
+        // Tahan laju perpindahan babak otomatis, simpan data sementara, dan munculkan Pop-up!
         const nextStage = currentStage + 1;
-        setCurrentStage(nextStage);
-        setQuestionsAnsweredInStage(0);
-        setPlayerAnswer('');
-        setFeedback({ type: 'success', msg: `🚀 TAHAP SELESAI! Membuka akses baru menuju ${STAGE_CONFIG[nextStage].title}!` });
-        logEvent(`Sistem: Berhasil melangkah maju ke Tahap ${nextStage}.`);
-
-        const firstQOfNextStage = generateQuestion(nextStage, 0);
-        setActiveQuestion(firstQOfNextStage);
-
-        if (nextStage === 6) {
-          setCurrentArrayData(firstQOfNextStage ? [...firstQOfNextStage.initialArray] : []);
-          setStudentMoves(0);
-        }
+        setPendingNextStage({
+          stageNum: nextStage,
+          targetScore: updatedScore
+        });
+        setShowStageConfirmPopup(true);
       }
     }
   };
 
-  // 🟢 MEKANIK BARU: NATIVE DRAG & DROP INSERTION (SERET & SISIP)
+  // Fungsi pengeksekusi jika siswa menekan tombol "LANJUT" di Pop-up
+  const eksekusiPindahTahapResmi = () => {
+    if (!pendingNextStage) return;
+
+    const { stageNum, targetScore } = pendingNextStage;
+
+    setScore(targetScore);
+
+    localStorage.setItem('tycoon_tahap_sekarang', String(stageNum));
+    localStorage.setItem('tycoon_indeks_soal', '0');
+    localStorage.setItem('tycoon_skor_sekarang', String(targetScore));
+
+    setCurrentStage(stageNum);
+    setQuestionsAnsweredInStage(0);
+    setPlayerAnswer('');
+    setFeedback({ type: 'success', msg: `🚀 TAHAP SELESAI! Membuka akses baru menuju ${STAGE_CONFIG[stageNum].title}!` });
+    logEvent(`Sistem: Berhasil melangkah maju ke Tahap ${stageNum}.`);
+
+    const firstQOfNextStage = generateQuestion(stageNum, 0);
+    setActiveQuestion(firstQOfNextStage);
+
+    if (stageNum === 6) {
+      setCurrentArrayData(firstQOfNextStage ? [...firstQOfNextStage.initialArray] : []);
+      localStorage.setItem('tycoon_array_terakhir', JSON.stringify(firstQOfNextStage ? [...firstQOfNextStage.initialArray] : []));
+      setStudentMoves(0);
+    }
+
+    setPendingNextStage(null);
+    setShowStageConfirmPopup(false);
+  };
+
   const handleDragStart = (e, index) => {
     if (currentStage !== 6 || isExamComplete) return;
     e.dataTransfer.setData("text/plain", index);
@@ -783,7 +895,7 @@ export default function App() {
 
   const handleDragEnter = (e, index) => {
     e.preventDefault();
-    setDraggedOverIdx(index); 
+    setDraggedOverIdx(index);
   };
 
   const handleDragLeave = (e) => {
@@ -792,7 +904,7 @@ export default function App() {
 
   const handleDrop = (e, targetIndex) => {
     e.preventDefault();
-    setDraggedOverIdx(null); 
+    setDraggedOverIdx(null);
 
     if (currentStage !== 6 || isExamComplete) return;
 
@@ -804,10 +916,10 @@ export default function App() {
     updatedArray.splice(targetIndex, 0, movedValue);
 
     setCurrentArrayData(updatedArray);
+    localStorage.setItem('tycoon_array_terakhir', JSON.stringify(updatedArray));
     const newMovesCount = studentMoves + 1;
     setStudentMoves(newMovesCount);
 
-    // --- PENILAIAN OTOMATIS STRUKTUR DATA ---
     let isSorted = false;
     const qNum = activeQuestion.qNum;
 
@@ -875,641 +987,633 @@ export default function App() {
     setFeedback({ type: 'error', msg: '❌ Logika keliru! Periksa kembali alur datanya dan coba lagi.' });
   };
 
-  const skipQuestion = () => {
-    if (!activeQuestion || isExamComplete) return;
-
-    logEvent(`⏩ Konsol Dev: Memaksa bypass sistem, melompat dari Soal ${questionsAnsweredInStage + 1} ke tahap angka selanjutnya.`);
-
-    processCorrectAnswer();
-    setPlayerAnswer('');
-    setFeedback({ type: '', msg: '' });
-  };
-
-  const shuffleCurrentQuestion = () => {
-    if (!activeQuestion || isExamComplete) return;
-
-    logEvent(`🔄 Fitur Acak Ulang: Mengganti dan merangkai data baru untuk penyegaran Soal ${questionsAnsweredInStage + 1}.`);
-
-    const newVariation = generateQuestion(currentStage, questionsAnsweredInStage);
-    setActiveQuestion(newVariation);
-
-    setPlayerAnswer('');
-    setFeedback({ type: '', msg: '' });
-
-    if (currentStage === 6) {
-      setCurrentArrayData(newVariation ? [...newVariation.initialArray] : []);
-      setStudentMoves(0);
-    }
-  };
-
   const totalPossiblePoints = 44;
 
   return (
-    <div className="min-h-screen bg-stone-100 p-6 font-mono text-stone-900 selection:bg-black selection:text-white">
-      {/* HUD DASHBOARD */}
-      <header className="border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-black uppercase tracking-wider">⚡ ALGORITHM TYCOON</h1>
-        <div className="flex gap-4">
-          <div className="bg-emerald-300 border-2 border-black px-4 py-2 font-black text-sm shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-            🎯 SKOR: {score} / {totalPossiblePoints} POIN
-          </div>
-          <div className="bg-rose-300 border-2 border-black px-4 py-2 font-black text-sm shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-            ⚠️ KESALAHAN: {incorrectAttempts}
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-stone-100 p-2 sm:p-6 font-mono text-stone-900 selection:bg-black selection:text-white overflow-x-hidden">
 
-      {feedback.msg && (
-        <div className={`p-3 mb-6 border-4 border-black font-bold uppercase text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'
-          }`}>
-          {feedback.msg}
-        </div>
-      )}
+      {!isAuthenticated ? (
+        /* ========================================================================= */
+        /* 🔐 TAMPILAN HALAMAN LOGIN RETRO (MENGGUNAKAN SUPABASE TOKEN)              */
+        /* ========================================================================= */
+        <div className="max-w-md mx-auto mt-8 md:mt-16 bg-white border-4 border-black p-4 md:p-8 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <h1 className="text-xl md:text-3xl font-black uppercase tracking-wider text-center mb-2">FORUM LOGIN</h1>
+          <p className="text-[10px] md:text-xs font-bold text-stone-400 text-center uppercase tracking-widest mb-4 md:mb-6">PENILAIAN AKHIR SEMESTER GENAP KODING</p>
 
-      {isExamComplete ? (
-        <div className="border-4 border-black bg-white p-8 text-center max-w-2xl mx-auto shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] my-12">
-          <h2 className="text-4xl font-black text-emerald-600 uppercase tracking-tight mb-2">📊 HASIL EVALUASI UJIAN</h2>
-          <p className="text-stone-600 font-bold mb-6 text-lg">Semua sesi operasi diamankan. Lembar kalkulasi skor berhasil diterbitkan.</p>
-          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-6">
-            <div className="bg-stone-900 text-yellow-400 p-4 border-4 border-black text-xl font-black">
-              PENCAPAIAN SKOR: {score} / {totalPossiblePoints}
+          {feedback.msg && (
+            <div className={`p-3 mb-4 md:mb-6 border-2 md:border-4 border-black font-bold uppercase text-xs text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'
+              }`}>
+              {feedback.msg}
             </div>
-            <div className="bg-stone-900 text-rose-400 p-4 border-4 border-black text-xl font-black">
-              TOTAL SALAH: {incorrectAttempts}
+          )}
+
+          <div className="space-y-3 md:space-y-4">
+            <div>
+              <label className="block text-[10px] md:text-xs font-black uppercase mb-1">NAMA</label>
+              <input
+                type="text"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="CONTOH: AHMAD"
+                className="w-full border-2 md:border-4 border-black p-2 md:p-3 text-sm md:text-base font-bold uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-stone-300"
+                disabled={isLoading}
+              />
             </div>
+            <div>
+              <label className="block text-[10px] md:text-xs font-black uppercase mb-1">kode token</label>
+              <input
+                type="text"
+                value={inputToken}
+                onChange={(e) => checkTokenUntukAksesGuru(e.target.value)}
+                placeholder="CONTOH: VII1-XYZ"
+                className="w-full border-2 md:border-4 border-black p-2 md:p-3 text-sm md:text-base font-bold uppercase focus:outline-none focus:bg-yellow-50 placeholder:text-stone-300"
+                disabled={isLoading}
+                onKeyDown={(e) => e.key === 'Enter' && handleLoginUjian()}
+              />
+            </div>
+            <button
+              onClick={handleLoginUjian}
+              disabled={isLoading}
+              className="w-full mt-4 bg-blue-600 text-white p-3 md:p-4 font-black uppercase tracking-widest border-2 md:border-4 border-black hover:bg-blue-700 active:translate-y-0.5 shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_rgba(0,0,0,1)] transition-all disabled:opacity-50 cursor-pointer text-xs md:text-sm"
+            >
+              {isLoading ? "🔄 MEMERIKSA TOKEN CLOUD..." : "LOG IN"}
+            </button>
           </div>
-          <div className="bg-yellow-300 text-black font-black border-4 border-black p-4 text-2xl uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-6">
-            PREDIKAT NILAI AKHIR: {Math.round((score / totalPossiblePoints) * 100)}%
+          <div className="text-[9px] md:text-[10px] text-stone-400 font-bold text-center mt-6 uppercase leading-tight">
+            Sistem Hibrida Aktif. Progres otomatis terkunci pada perangkat smartphone setelah token berhasil diverifikasi server.
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="border-4 border-black bg-white p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        /* ========================================================================= */
+        /* 🎮 TAMPILAN AREA GAME UTAMA (AKAN TERBUKA JIKA LOLOS TOKEN)               */
+        /* ========================================================================= */
+        <>
+          {/* HUD HEADER KELAS 7: FOKUS MURNI IDENTITAS SISWA */}
+          <header className="border-4 border-black bg-white p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4 md:mb-6 text-center md:text-left">
+            <h1 className="text-lg md:text-2xl font-black uppercase tracking-wide text-stone-900">
+              👤 {studentName}
+            </h1>
+            <p className="text-xs md:text-sm font-bold text-blue-600 uppercase mt-0.5 tracking-wider">
+              🟢 STATUS: TERMINAL UJIAN AKTIF // KELAS: {studentClass}
+            </p>
+          </header>
 
-              <div className="bg-black text-white p-4 mb-4 border-2 border-black flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-wide">💼 {STAGE_CONFIG[currentStage].title}</h2>
-                  <p className="text-xs text-stone-300 font-bold mt-0.5">{STAGE_CONFIG[currentStage].description}</p>
+          {feedback.msg && (
+            <div className={`p-3 mb-4 md:mb-6 border-2 md:border-4 border-black font-bold uppercase text-xs md:text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'
+              }`}>
+              {feedback.msg}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 📊 STRUKTUR BARU: PANEL UTAMA MONITORING & REKAP NILAI DIREKTUR GURU       */}
+          {/* ========================================================================= */}
+          {currentStage === 999 ? (
+            <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-4xl mx-auto">
+              <div className="flex flex-col md:flex-row justify-between items-center border-b-4 border-black pb-4 mb-4 md:mb-6 gap-4">
+                <div className="text-center md:text-left">
+                  <h2 className="text-xl md:text-2xl font-black uppercase">🗃️ PANEL MONITORING GURU</h2>
+                  <p className="text-[10px] md:text-xs font-bold text-stone-500 uppercase">Rekapitulasi Hasil Evaluasi Kompetensi Algoritma</p>
                 </div>
-                <div className="bg-blue-600 text-white border-2 border-white px-3 py-1 font-black text-xs uppercase shadow-[2px_2px_0px_rgba(255,255,255,1)] whitespace-nowrap">
-                  PROGRES PENCAPAIAN: SOAL {questionsAnsweredInStage + 1} / {
-                    currentStage === 1 ? 9 :
-                      currentStage === 2 ? 10 :
-                        currentStage === 4 ? 10 : 5
-                  }
-                </div>
+                <button
+                  type="button"
+                  onClick={unduhRekapNilaiExcel}
+                  className="w-full md:w-auto bg-emerald-400 hover:bg-emerald-300 text-black px-6 py-3 border-4 border-black font-black uppercase text-[10px] md:text-xs tracking-wider shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer"
+                >
+                  📥 UNDUH FORMAT SPREADSHEET (.CSV)
+                </button>
               </div>
 
-              {/* 📊 INTERAKTIF JALUR SERET & SISIP UNTUK TAHAP 6 (INSERTION SORT MURNI) */}
-              {currentStage === 6 && currentArrayData.length > 0 && (
-                <div className="my-6 w-full mx-auto bg-white border-4 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
-                  <div className="text-xs font-bold text-stone-500 uppercase mb-4 tracking-wider flex justify-between px-2">
-                    <span>Tindakan Eksekusi: <strong className="text-blue-600">{studentMoves}</strong> kali geser</span>
-                    <span>Batas Paling Efektif: <strong className="text-rose-600">{activeQuestion?.maxEffectiveMoves}</strong> langkah target</span>
+              <div className="bg-stone-50 border-2 md:border-4 border-black p-4 text-center mb-6">
+                <p className="text-[10px] md:text-xs font-bold text-stone-600 leading-relaxed uppercase">
+                  💡 Informasi Excel: File yang diunduh sudah diformat rapi menggunakan pembatas semicolon (;). <br />
+                  Kamu tinggal membukanya langsung di **Microsoft Excel** atau **Google Sheets** tanpa perlu menyalin atau menata format kolom lagi!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className="w-full md:w-auto bg-stone-900 text-white text-[10px] md:text-xs font-black uppercase px-4 py-2 border-2 border-black hover:bg-stone-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+              >
+                ⬅️ KEMBALI KE HALAMAN LOGIN UTAMA
+              </button>
+            </div>
+          ) : isExamComplete ? (
+            /* 📊 LAYAR PENGUNCIAN HASIL FINAL SISWA */
+            <div className="border-4 border-black bg-white p-6 md:p-8 text-center max-w-2xl mx-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] my-6 md:my-12">
+              <h2 className="text-2xl md:text-4xl font-black text-emerald-600 uppercase tracking-tight mb-2">📊 HASIL EVALUASI UJIAN</h2>
+              <p className="text-stone-600 font-bold mb-4 md:mb-6 text-sm md:text-lg">Semua sesi operasi diamankan. Lembar kalkulasi skor berhasil diterbitkan ke cloud.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md mx-auto mb-6">
+                <div className="bg-stone-900 text-yellow-400 p-4 border-4 border-black text-lg md:text-xl font-black">
+                  PENCAPAIAN SKOR: {score} / {totalPossiblePoints}
+                </div>
+                <div className="bg-stone-900 text-rose-400 p-4 border-4 border-black text-lg md:text-xl font-black">
+                  TOTAL SALAH: {incorrectAttempts}
+                </div>
+              </div>
+              <div className="bg-yellow-300 text-black font-black border-4 border-black p-4 text-xl md:text-2xl uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-4">
+                PREDIKAT NILAI AKHIR: {Math.round((score / totalPossiblePoints) * 100)}%
+              </div>
+              <p className="text-[10px] md:text-xs font-bold text-stone-400 uppercase">Token ujian Anda telah hangus. Silakan letakkan smartphone di meja dan tunggu instruksi Guru.</p>
+            </div>
+          ) : (
+            /* KONTEN UTAMA JALANNYA SOAL (TAHAP 1-6) */
+            <div className="w-full max-w-3xl mx-auto">
+              <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+
+                  <div className="bg-black text-white p-3 md:p-4 mb-4 border-2 border-black flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <div>
+                      <h2 className="text-base md:text-xl font-black uppercase tracking-wide">💼 {STAGE_CONFIG[currentStage].title}</h2>
+                      <p className="text-[9px] md:text-xs text-stone-300 font-bold mt-0.5">{STAGE_CONFIG[currentStage].description}</p>
+                    </div>
+                    <div className="bg-blue-600 text-white border-2 border-white px-2 py-1 md:px-3 md:py-1 font-black text-[10px] md:text-xs uppercase shadow-[2px_2px_0px_rgba(255,255,255,1)] whitespace-nowrap text-center">
+                      SOAL {questionsAnsweredInStage + 1} / {
+                        currentStage === 1 ? 9 :
+                          currentStage === 2 ? 10 :
+                            currentStage === 4 ? 10 : 5
+                      }
+                    </div>
                   </div>
 
-                  <div className="flex justify-center items-end gap-1 bg-stone-100 p-4 border-4 border-black border-double min-h-50 w-full">
-                    {currentArrayData.map((value, idx) => {
-                      const isTargetHovered = draggedOverIdx === idx;
+                  {/* 📊 INTERAKTIF JALUR SERET & SISIP UNTUK TAHAP 6 (Dioptimalkan Agar Bisa Scroll Horizontal di HP) */}
+                  {currentStage === 6 && currentArrayData.length > 0 && (
+                    <div className="my-4 md:my-6 w-full mx-auto bg-white border-2 md:border-4 border-black p-3 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
+                      <div className="text-[10px] md:text-xs font-bold text-stone-500 uppercase mb-4 tracking-wider flex justify-between px-1 md:px-2">
+                        <span>Langkah: <strong className="text-blue-600">{studentMoves}</strong></span>
+                        <span>Batas Efektif: <strong className="text-rose-600">{activeQuestion?.maxEffectiveMoves}</strong></span>
+                      </div>
 
-                      let numericWeight = typeof value === 'string'
-                        ? (value.charCodeAt(0) - 50) * 10 + parseInt(value[1] || 0, 10) * 2
-                        : value;
+                      {/* Penambahan w-full dan overflow-x-auto agar tidak meluber di HP */}
+                      <div className="flex justify-start md:justify-center items-end gap-1 md:gap-1.5 bg-stone-100 p-2 md:p-4 border-2 md:border-4 border-black border-double min-h-40 md:min-h-55 w-full overflow-x-auto">
+                        {currentArrayData.map((value, idx) => {
+                          const isTargetHovered = draggedOverIdx === idx;
+                          let numericWeight = typeof value === 'string'
+                            ? (value.charCodeAt(0) - 50) * 10 + parseInt(value[1] || 0, 10) * 2
+                            : value;
+                          // Mengurangi sedikit height pengali agar muat di HP
+                          const heightStyle = { height: `${40 + (numericWeight * 1.0)}px` };
 
-                      const heightStyle = { height: `${60 + (numericWeight * 1.2)}px` };
+                          return (
+                            <div
+                              key={value}
+                              className="flex flex-1 items-end relative min-w-8.75 md:min-w-0"
+                              onDragEnter={(e) => handleDragEnter(e, idx)}
+                              onDragLeave={handleDragLeave}
+                              onDragOver={handleDragOver}
+                              onDrop={(e) => handleDrop(e, idx)}
+                            >
+                              {isTargetHovered && (
+                                <div className="absolute left-0 top-0 bottom-0 w-1 md:w-1.5 bg-yellow-400 border-l border-r md:border-l-2 md:border-r-2 border-black border-dashed animate-pulse z-20" />
+                              )}
 
-                      return (
-                        <div
-                          key={value}
-                          className="flex flex-1 items-end relative"
-                          onDragEnter={(e) => handleDragEnter(e, idx)}
-                          onDragLeave={handleDragLeave}
-                          onDragOver={handleDragOver}
-                          onDrop={(e) => handleDrop(e, idx)}
-                        >
-                          {isTargetHovered && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-400 border-l-2 border-r-2 border-black border-dashed animate-pulse z-20 -ml-0.5" />
-                          )}
+                              <div
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, idx)}
+                                style={heightStyle}
+                                className={`w-full border border-black md:border-2 md:border-black font-mono flex flex-col justify-between items-center py-1 md:py-2 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-[1px_1px_0px_rgba(0,0,0,1)] md:shadow-[1px_2px_0px_rgba(0,0,0,1)] select-none ${isTargetHovered ? 'bg-amber-100 border-dashed opacity-80 scale-95' : 'bg-orange-300 text-stone-900 hover:bg-orange-200'
+                                  }`}
+                              >
+                                <span className="text-[7px] md:text-[9px] font-black opacity-30">
+                                  {currentArrayData.length <= 15 ? `#${idx + 1}` : ''}
+                                </span>
+                                <span className={`font-black tracking-tighter ${currentArrayData.length > 20 ? 'text-[10px] md:text-xs' : 'text-xs md:text-sm'}`}>
+                                  {value}
+                                </span>
+                                <span className="text-[6px] md:text-[9px] opacity-40">===</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-                          <div
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, idx)}
-                            style={heightStyle}
-                            className={`w-full border-2 border-black font-mono flex flex-col justify-between items-center py-2 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-[1px_2px_0px_rgba(0,0,0,1)] hover:-translate-y-1 select-none ${isTargetHovered
-                              ? 'bg-amber-100 border-dashed opacity-80 scale-95'
-                              : 'bg-orange-300 text-stone-900 hover:bg-orange-200'
-                              }`}
-                          >
-                            <span className="text-[9px] font-black opacity-30">
-                              {currentArrayData.length <= 15 ? `#${idx + 1}` : ''}
-                            </span>
+                  {/* BOX KONSOL SOAL ACTIVE */}
+                  {currentStage !== 3 && activeQuestion && (
+                    <div className="border-2 md:border-4 border-black bg-stone-50 p-4 md:p-6 mb-4 md:mb-6 shadow-inner relative">
+                      <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 flex gap-1">
+                        <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-red-500 rounded-full border border-black"></span>
+                        <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-yellow-500 rounded-full border border-black"></span>
+                        <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded-full border border-black"></span>
+                      </div>
+                      <div className="text-right text-[9px] md:text-xs font-black text-stone-400 mb-2 uppercase tracking-widest">
+                        Kompilator Aktif
+                      </div>
 
-                            <span className={`font-black tracking-tighter ${currentArrayData.length > 20 ? 'text-xs' : 'text-sm'
-                              }`}>
-                              {value}
-                            </span>
-
-                            <span className="text-[9px] opacity-40">===</span>
+                      {currentStage === 2 ? (
+                        <div className="space-y-4 mt-2 md:mt-4">
+                          <div className="text-sm md:text-base font-black leading-relaxed text-stone-800">
+                            {activeQuestion?.question}
+                          </div>
+                          <div className="bg-stone-950 p-3 md:p-4 border-2 md:border-4 border-black shadow-inner relative overflow-x-auto">
+                            <div className="absolute top-1 right-2 text-[6px] md:text-[8px] font-mono text-stone-600 font-bold tracking-widest">IDE_KODE_SEMU</div>
+                            <pre className="font-mono text-[10px] md:text-sm text-emerald-400 leading-relaxed tracking-wide whitespace-pre">
+                              {activeQuestion?.codeLines?.map((line, index) => (
+                                <div key={index} className="hover:bg-stone-900 px-1 py-0.5 rounded transition-colors">
+                                  {line}
+                                </div>
+                              ))}
+                            </pre>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                      ) : (
+                        <div className="text-sm md:text-lg font-black leading-relaxed mt-2 md:mt-4 mb-2 md:mb-4">
+                          {activeQuestion?.question}
+                        </div>
+                      )}
 
-              {/* BOX KONSOL SOAL ACTIVE */}
-              {currentStage !== 3 && activeQuestion && (
-                <div className="border-4 border-black bg-stone-50 p-6 mb-6 shadow-inner relative">
-                  <div className="absolute top-2 left-2 flex gap-1">
-                    <span className="w-3 h-3 bg-red-500 rounded-full border border-black"></span>
-                    <span className="w-3 h-3 bg-yellow-500 rounded-full border border-black"></span>
-                    <span className="w-3 h-3 bg-green-500 rounded-full border border-black"></span>
-                  </div>
-                  <div className="text-right text-xs font-black text-stone-400 mb-2 uppercase tracking-widest">
-                    Blok Kompilator Inti Aman
-                  </div>
-
-                  {currentStage === 2 ? (
-                    <div className="space-y-4 mt-4">
-                      <div className="text-base font-black leading-relaxed text-stone-800">
-                        {activeQuestion?.question}
-                      </div>
-
-                      <div className="bg-stone-950 p-4 border-4 border-black shadow-inner relative overflow-hidden">
-                        <div className="absolute top-1 right-2 text-[8px] font-mono text-stone-600 font-bold tracking-widest">IDE_KODE_SEMU</div>
-                        <pre className="font-mono text-xs md:text-sm text-emerald-400 leading-relaxed whitespace-pre-wrap tracking-wide">
-                          {activeQuestion?.codeLines?.map((line, index) => (
-                            <div key={index} className="hover:bg-stone-900 px-1 py-0.5 rounded transition-colors">
-                              {line}
-                            </div>
-                          ))}
-                        </pre>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-base md:text-lg font-black leading-relaxed mt-4 mb-4">
-                      {activeQuestion?.question}
-                    </div>
-                  )}
-
-                  {/* RENDERING RETRO SWITCHES UNTUK TAHAP 1 */}
-                  {currentStage === 1 && activeQuestion?.mode === 'switch' && (
-                    <div className="my-6 max-w-md mx-auto bg-white border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
-                      <div className="grid grid-cols-5 gap-2 mb-4">
-                        {[16, 8, 4, 2, 1].map((weight, idx) => (
-                          <div key={idx} className="flex flex-col items-center">
-                            <span className="text-xs text-stone-400 font-bold mb-1">[{weight}]</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setBinarySwitches(prev => {
-                                  const updated = [...prev];
-                                  updated[idx] = updated[idx] === 0 ? 1 : 0;
-                                  return updated;
-                                });
-                              }}
-                              className={`w-12 h-16 border-4 border-black font-mono text-xl font-black flex items-center justify-center transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 select-none cursor-pointer ${binarySwitches[idx] === 1
-                                ? 'bg-emerald-400 text-black translate-y-0.5 shadow-none'
-                                : 'bg-stone-200 text-stone-600'
-                                }`}
-                            >
-                              {binarySwitches[idx]}
-                            </button>
-                            <span className="text-[10px] text-stone-500 font-bold mt-1 uppercase">
-                              {binarySwitches[idx] === 1 ? 'NYALA' : 'MATI'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={checkAnswer}
-                        className="w-full mt-2 bg-black text-white p-2 font-black uppercase text-xs tracking-wider border-2 border-black hover:bg-stone-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-                      >
-                        KIRIM KONFIGURASI SAKLAR
-                      </button>
-                    </div>
-                  )}
-
-                  {/* MATRIKS GRID PERSEGI PROGRESAL */}
-                  {currentStage === 5 && activeQuestion?.gridData && (
-                    <div className="my-6 overflow-x-auto p-2 bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      <table className="mx-auto font-mono text-sm font-black border-collapse">
-                        <thead>
-                          <tr>
-                            <th className="p-1 text-stone-400 text-xs px-2"></th>
-                            {Array.from({ length: activeQuestion.gridSize }).map((_, colIdx) => (
-                              <th key={colIdx} className="p-1 bg-stone-100 border border-black text-xs min-w-10">
-                                K{colIdx + 1}
-                              </th>
+                      {/* RENDERING RETRO SWITCHES UNTUK TAHAP 1 (Diperkecil di Mobile) */}
+                      {currentStage === 1 && activeQuestion?.mode === 'switch' && (
+                        <div className="my-4 md:my-6 max-w-md mx-auto bg-white border-2 md:border-4 border-black p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
+                          <div className="grid grid-cols-5 gap-1 md:gap-2 mb-4">
+                            {[16, 8, 4, 2, 1].map((weight, idx) => (
+                              <div key={idx} className="flex flex-col items-center">
+                                <span className="text-[10px] md:text-xs text-stone-400 font-bold mb-1">[{weight}]</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setBinarySwitches(prev => {
+                                      const updated = [...prev];
+                                      updated[idx] = updated[idx] === 0 ? 1 : 0;
+                                      return updated;
+                                    });
+                                  }}
+                                  className={`w-10 h-14 md:w-12 md:h-16 border-2 md:border-4 border-black font-mono text-lg md:text-xl font-black flex items-center justify-center transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 select-none cursor-pointer ${binarySwitches[idx] === 1 ? 'bg-emerald-400 text-black translate-y-0.5 shadow-none' : 'bg-stone-200 text-stone-600'
+                                    }`}
+                                >
+                                  {binarySwitches[idx]}
+                                </button>
+                                <span className="text-[8px] md:text-[10px] text-stone-500 font-bold mt-1 uppercase">
+                                  {binarySwitches[idx] === 1 ? 'NYALA' : 'MATI'}
+                                </span>
+                              </div>
                             ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activeQuestion.gridData.map((rowArr, rowIndex) => {
-                            const labelBaris = activeQuestion.gridSize - rowIndex;
-                            return (
-                              <tr key={rowIndex}>
-                                <td className="p-1 bg-stone-100 border border-black text-xs text-center font-bold px-2">B{labelBaris}</td>
-                                {rowArr.map((cellValue, colIndex) => (
-                                  <td key={colIndex} className="p-0 border border-black">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleGridCellClick(rowIndex, colIndex)}
-                                      className={`w-full h-full p-3 text-center font-mono text-base font-extrabold transition-all cursor-pointer select-none active:scale-95 ${cellValue === 1
-                                        ? 'bg-stone-900 text-yellow-300 hover:bg-stone-800'
-                                        : 'bg-white text-stone-800 hover:bg-stone-50'
-                                        }`}
-                                    >
-                                      {cellValue}
-                                    </button>
-                                  </td>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={checkAnswer}
+                            className="w-full mt-2 bg-black text-white p-2 font-black uppercase text-[10px] md:text-xs tracking-wider border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer"
+                          >
+                            KIRIM KONFIGURASI SAKLAR
+                          </button>
+                        </div>
+                      )}
+
+                      {/* MATRIKS GRID PERSEGI PROGRESAL (Tambahan Overflow-X-Auto) */}
+                      {currentStage === 5 && activeQuestion?.gridData && (
+                        <div className="my-4 md:my-6 w-full overflow-x-auto p-1 md:p-2 bg-white border-2 md:border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                          <table className="mx-auto font-mono text-xs md:text-sm font-black border-collapse">
+                            <thead>
+                              <tr>
+                                <th className="p-1 text-stone-400 text-[9px] md:text-xs px-1 md:px-2"></th>
+                                {Array.from({ length: activeQuestion.gridSize }).map((_, colIdx) => (
+                                  <th key={colIdx} className="p-1 bg-stone-100 border border-black text-[9px] md:text-xs min-w-7.5 md:min-w-10">
+                                    K{colIdx + 1}
+                                  </th>
                                 ))}
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                            </thead>
+                            <tbody>
+                              {activeQuestion.gridData.map((rowArr, rowIndex) => {
+                                const labelBaris = activeQuestion.gridSize - rowIndex;
+                                return (
+                                  <tr key={rowIndex}>
+                                    <td className="p-1 bg-stone-100 border border-black text-[9px] md:text-xs text-center font-bold px-1 md:px-2">B{labelBaris}</td>
+                                    {rowArr.map((cellValue, colIndex) => (
+                                      <td key={colIndex} className="p-0 border border-black">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleGridCellClick(rowIndex, colIndex)}
+                                          className={`w-full h-full p-2 md:p-3 text-center font-mono text-sm md:text-base font-extrabold transition-all cursor-pointer select-none active:scale-95 ${cellValue === 1 ? 'bg-stone-900 text-yellow-300 hover:bg-stone-800' : 'bg-white text-stone-800 hover:bg-stone-50'
+                                            }`}
+                                        >
+                                          {cellValue}
+                                        </button>
+                                      </td>
+                                    ))}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* ========================================================================= */}
-              {/* 📊 INTERFACES INTERAKTIF SAKLAR LAMPU MULTI-SWITCH (SOAL 6 - 10)          */}
-              {/* ========================================================================= */}
-              {currentStage === 2 && activeQuestion?.mode === 'interactive-circuit' && (
-                <div className="my-6 p-6 bg-stone-950 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center relative rounded-lg">
-                  
-                  <div className="max-w-md mx-auto bg-stone-900 p-6 border-2 border-stone-800 rounded-lg font-mono text-white space-y-6">
-                    
-                    {/* PANEL REGISTRI SAKLAR AKTIF (MENDUKUNG HINGGA 4 SAKLAR) */}
-                    <div className="flex flex-wrap justify-center gap-3">
-                      {activeQuestion.inputs.A !== undefined && (
-                        <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-20 grow">
-                          <span className="text-stone-500 font-bold text-[9px] block mb-1">🔌 SAKLAR A</span>
-                          <span className={`text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.A === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {activeQuestion.inputs.A === 1 ? "AKTIF (1)" : "MATI (0)"}
-                          </span>
+                  {/* INTERACTIVE LOGIC CIRCUIT TAHAP 2 */}
+                  {currentStage === 2 && activeQuestion?.mode === 'interactive-circuit' && (
+                    <div className="my-4 md:my-6 p-4 md:p-6 bg-stone-950 border-2 md:border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center relative rounded-md md:rounded-lg">
+                      <div className="max-w-md mx-auto bg-stone-900 p-4 md:p-6 border md:border-2 border-stone-800 rounded-lg font-mono text-white space-y-4 md:space-y-6">
+                        <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+                          {activeQuestion.inputs.A !== undefined && (
+                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR A</span>
+                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.A === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                                {activeQuestion.inputs.A === 1 ? "AKTIF (1)" : "MATI (0)"}
+                              </span>
+                            </div>
+                          )}
+                          {activeQuestion.inputs.B !== undefined && (
+                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR B</span>
+                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.B === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                                {activeQuestion.inputs.B === 1 ? "AKTIF (1)" : "MATI (0)"}
+                              </span>
+                            </div>
+                          )}
+                          {activeQuestion.inputs.C !== undefined && (
+                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR C</span>
+                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.C === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                                {activeQuestion.inputs.C === 1 ? "AKTIF (1)" : "MATI (0)"}
+                              </span>
+                            </div>
+                          )}
+                          {activeQuestion.inputs.D !== undefined && (
+                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR D</span>
+                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.D === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                                {activeQuestion.inputs.D === 1 ? "AKTIF (1)" : "MATI (0)"}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {activeQuestion.inputs.B !== undefined && (
-                        <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-20 grow">
-                          <span className="text-stone-500 font-bold text-[9px] block mb-1">🔌 SAKLAR B</span>
-                          <span className={`text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.B === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {activeQuestion.inputs.B === 1 ? "AKTIF (1)" : "MATI (0)"}
-                          </span>
+
+                        <div className="bg-stone-950 p-2 md:p-3 border border-amber-500/20 rounded text-left text-[10px] md:text-xs space-y-1 md:space-y-2">
+                          <span className="text-amber-400 font-black block text-[8px] md:text-[10px] uppercase tracking-wider">📋 PANDUAN ATURAN ALIRAN SISTEM:</span>
+                          {activeQuestion.circuitType === 'LIGHT-AND' && (
+                            <p className="text-stone-300 leading-relaxed">**Aturan Seri (DAN):** Listrik hanya mengalir jika Saklar A **DAN** Saklar B dua-duanya berada di posisi **AKTIF (1)**.</p>
+                          )}
+                          {activeQuestion.circuitType === 'LIGHT-INVERT-AND' && (
+                            <p className="text-stone-300 leading-relaxed">**Aturan Inversi Seri:** Balikkan dulu nilai status Saklar A (1 jadi 0, 0 jadi 1). Lalu operasikan hasil hitungan baru itu secara **SERI (DAN)** dengan letak Saklar B.</p>
+                          )}
+                          {activeQuestion.circuitType === 'LIGHT-MIX-3WAY' && (
+                            <p className="text-stone-300 leading-relaxed">**Aturan Perpaduan:** Nilai hitungan **SERI (DAN)** antara letak Saklar A & B. Jika hasilnya siap, rangkaikan perpaduan itu secara **PARALEL (ATAU)** dengan posisi Saklar C.</p>
+                          )}
+                          {activeQuestion.circuitType === 'LIGHT-INVERT-MIX' && (
+                            <p className="text-stone-300 leading-relaxed">**Aturan Inversi Gabungan:** Tukar putaran pada letak Saklar A, lalu satukan memakai **SERI (DAN)** bersama kedudukan Saklar B. Di sisi berbeda, tukar pula nilai Saklar C. Terakhir, gabungkan kedua jalur tadi memanfaatkan operasi **PARALEL (ATAU)**.</p>
+                          )}
+                          {activeQuestion.circuitType === 'LIGHT-FINAL-BOSS-4WAY' && (
+                            <p className="text-stone-300 leading-relaxed">**Aturan Ujian Empat Saklar Bos:** Kerjakan perpaduan Jalur Atas (Saklar A **SERI** B). Berikutnya, kerjakan perpaduan Jalur Bawah (Saklar C **SERI** D). Lampu induk terakhir akan **MENYALA (1)** asalkan perhitungan antara Jalur Atas **ATAU** Jalur Bawah mempunyai arus senilai 1.</p>
+                          )}
                         </div>
-                      )}
-                      {activeQuestion.inputs.C !== undefined && (
-                        <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-20 grow">
-                          <span className="text-stone-500 font-bold text-[9px] block mb-1">🔌 SAKLAR C</span>
-                          <span className={`text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.C === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {activeQuestion.inputs.C === 1 ? "AKTIF (1)" : "MATI (0)"}
-                          </span>
+
+                        <div className="bg-stone-950 p-3 md:p-4 border border-stone-800 rounded-md text-center">
+                          <span className="text-[8px] md:text-[10px] text-stone-400 font-black block mb-2">STATUS INDIKATOR LAMPU UTAMA (G1)</span>
+                          <button
+                            type="button"
+                            onClick={() => setCircuitGates(prev => ({ ...prev, G1: prev.G1 === null ? 0 : (prev.G1 === 0 ? 1 : null) }))}
+                            className={`w-full py-2 md:py-3 text-xs md:text-sm font-black border-2 md:border-4 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer ${circuitGates.G1 === null ? 'bg-stone-700 text-stone-300' : (circuitGates.G1 === 1 ? 'bg-yellow-400 text-black' : 'bg-rose-500 text-white')
+                              }`}
+                          >
+                            {circuitGates.G1 === null ? "💡 KLIK: JAWAB STATUS" : (circuitGates.G1 === 1 ? "💡 LAMPU MENYALA (1)" : "🔌 LAMPU MATI (0)")}
+                          </button>
                         </div>
-                      )}
-                      {activeQuestion.inputs.D !== undefined && (
-                        <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-20 grow">
-                          <span className="text-stone-500 font-bold text-[9px] block mb-1">🔌 SAKLAR D</span>
-                          <span className={`text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.D === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                            {activeQuestion.inputs.D === 1 ? "AKTIF (1)" : "MATI (0)"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* KOTAK RUMUS BAHASA INDONESIA (LOGIKA MENINGKAT DI SETIAP NOMOR) */}
-                    <div className="bg-stone-950 p-3 border border-amber-500/20 rounded text-left text-xs space-y-2">
-                      <span className="text-amber-400 font-black block text-[10px] uppercase tracking-wider">📋 PANDUAN ATURAN ALIRAN SISTEM:</span>
-                      
-                      {activeQuestion.circuitType === 'LIGHT-AND' && (
-                        <p className="text-stone-300 leading-relaxed">**Aturan Seri (DAN):** Listrik hanya mengalir jika Saklar A **DAN** Saklar B dua-duanya berada di posisi **AKTIF (1)**.</p>
-                      )}
-                      {activeQuestion.circuitType === 'LIGHT-INVERT-AND' && (
-                        <p className="text-stone-300 leading-relaxed">**Aturan Inversi Seri:** Balikkan dulu nilai status Saklar A (1 jadi 0, 0 jadi 1). Lalu operasikan hasil hitungan baru itu secara **SERI (DAN)** dengan letak Saklar B.</p>
-                      )}
-                      {activeQuestion.circuitType === 'LIGHT-MIX-3WAY' && (
-                        <p className="text-stone-300 leading-relaxed">**Aturan Perpaduan:** Nilai hitungan **SERI (DAN)** antara letak Saklar A & B. Jika hasilnya siap, rangkaikan perpaduan itu secara **PARALEL (ATAU)** dengan posisi Saklar C (Lampu akan terang apabila minimal salah satu jalur bernilai 1).</p>
-                      )}
-                      {activeQuestion.circuitType === 'LIGHT-INVERT-MIX' && (
-                        <p className="text-stone-300 leading-relaxed">**Aturan Inversi Gabungan:** Tukar putaran pada letak Saklar A, lalu satukan memakai **SERI (DAN)** bersama kedudukan Saklar B. Di sisi berbeda, tukar pula nilai Saklar C. Terakhir, gabungkan kedua jalur tadi memanfaatkan operasi **PARALEL (ATAU)**.</p>
-                      )}
-                      {activeQuestion.circuitType === 'LIGHT-FINAL-BOSS-4WAY' && (
-                        <p className="text-stone-300 leading-relaxed">**Aturan Ujian Empat Saklar Bos:** Kerjakan perpaduan Jalur Atas (Saklar A **SERI** B). Berikutnya, kerjakan perpaduan Jalur Bawah (Saklar C **SERI** D). Lampu induk terakhir akan **MENYALA (1)** asalkan perhitungan antara Jalur Atas **ATAU** Jalur Bawah mempunyai arus senilai 1.</p>
-                      )}
-                    </div>
-
-                    {/* INTERAKTIF OUTPUT AKHIR */}
-                    <div className="bg-stone-950 p-4 border border-stone-800 rounded-md text-center">
-                      <span className="text-[10px] text-stone-400 font-black block mb-2">STATUS INDIKATOR LAMPU UTAMA (G1)</span>
-                      <button
-                        type="button"
-                        onClick={() => setCircuitGates(prev => ({ ...prev, G1: prev.G1 === null ? 0 : (prev.G1 === 0 ? 1 : null) }))}
-                        className={`w-full py-3 text-sm font-black border-4 border-black shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all ${
-                          circuitGates.G1 === null ? 'bg-stone-700 text-stone-300' : (circuitGates.G1 === 1 ? 'bg-yellow-400 text-black' : 'bg-rose-500 text-white')
-                        }`}
-                      >
-                        {circuitGates.G1 === null ? "💡 KLIK: JAWAB STATUS LAMPU" : (circuitGates.G1 === 1 ? "💡 LAMPU MENYALA (1)" : "🔌 LAMPU MATI (0)")}
-                      </button>
-                    </div>
-
-                  </div>
-
-                  {/* TOMBOL VERIFIKASI */}
-                  <div className="mt-6 max-w-xs mx-auto">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (circuitGates.G1 === activeQuestion.correctGates.G1) {
-                          processCorrectAnswer();
-                        } else {
-                          logEvent(`❌ Salah! Aliran listrik sirkuit gagal menyalakan target sasaran. Angka saklar biner terpaksa diacak ulang demi keamanan.`);
-                          processIncorrectAnswer();
-                          setActiveQuestion(generateQuestion(2, questionsAnsweredInStage));
-                          setCircuitGates({ G1: null, G2: null, G3: null });
-                        }
-                      }}
-                      className="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-3 px-4 border-4 border-black font-black uppercase tracking-wider shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-xs transition-all"
-                    >
-                      ⚡ PERIKSA JAWABAN SAKLAR
-                    </button>
-                  </div>
-
-                </div>
-              )}
-
-              {/* 🟢 FORM TEXT LAMA: Aktif di Tahap 4, Tahap 1, dan Tahap 2 (Khusus Soal 1-5 saja karena bukan mode interaktif) */}
-              {((currentStage === 2 && activeQuestion?.mode !== 'interactive-circuit') ||
-                (currentStage === 1 && activeQuestion?.mode !== 'switch') ||
-                currentStage === 4) && (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={playerAnswer}
-                        onChange={(e) => setPlayerAnswer(e.target.value)}
-                        placeholder={currentStage === 1 ? "MASUKKAN ANGKA HASIL KONVERSI KE DESIMAL..." : "Ketik rahasia kode pemecahan di tempat ini..."}
-                        className="border-4 border-black p-3 grow font-bold focus:outline-none focus:bg-yellow-50 text-base uppercase shadow-inner placeholder:text-stone-400"
-                        onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={checkAnswer}
-                        className="bg-black text-white px-8 font-black uppercase tracking-wider border-4 border-black hover:bg-stone-800 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-                      >
-                        EKSEKUSI
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* 🟢 TAMPILAN BARU TAHAP 3: NEON SIGNAL STREAM (MAKEOVER VISUAL) */}
-              {currentStage === 3 && activeQuestion && (
-                <div className="my-6 p-6 bg-stone-950 border-4 border-black text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-size-[20px_20px] pointer-events-none" />
-
-                  <div className="text-[10px] font-black text-emerald-400 tracking-widest uppercase mb-4 animate-pulse flex items-center justify-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    PENGANALISIS PERULANGAN LOGIKA AKTIF
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  </div>
-
-                  <div className="flex flex-wrap justify-center items-center gap-3 my-6">
-                    {activeQuestion.question.match(/\d+,\s*\d+,\s*\d+,\s*\d+(,\s*\d+)?/)?.[0].split(',').map((numStr, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <div className="bg-stone-900 border-2 border-emerald-500 text-emerald-400 font-mono text-xl md:text-2xl font-black w-14 h-14 md:w-16 md:h-16 flex flex-col justify-center items-center shadow-[0_0_10px_rgba(16,185,129,0.3)] relative group">
-                          <span className="text-[8px] text-stone-500 font-bold absolute top-1 left-1">A_{idx + 1}</span>
-                          <span className="drop-shadow-[0_0_5px_rgba(16,185,129,0.8)]">{numStr.trim()}</span>
-                        </div>
-                        <span className="text-emerald-500 font-black text-xl">➔</span>
                       </div>
+
+                      <div className="mt-4 md:mt-6 max-w-xs mx-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (circuitGates.G1 === activeQuestion.correctGates.G1) {
+                              processCorrectAnswer();
+                            } else {
+                              logEvent(`❌ Salah! Aliran listrik sirkuit gagal menyalakan target sasaran. Angka saklar biner terpaksa diacak ulang demi keamanan.`);
+                              processIncorrectAnswer();
+                              setActiveQuestion(generateQuestion(2, questionsAnsweredInStage));
+                              setCircuitGates({ G1: null, G2: null, G3: null });
+                            }
+                          }}
+                          className="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-2 px-3 md:py-3 md:px-4 border-2 md:border-4 border-black font-black uppercase tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-[10px] md:text-xs transition-all cursor-pointer"
+                        >
+                          ⚡ PERIKSA JAWABAN SAKLAR
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FORM TEXT INPUT BIASA */}
+                  {((currentStage === 2 && activeQuestion?.mode !== 'interactive-circuit') ||
+                    (currentStage === 1 && activeQuestion?.mode !== 'switch') ||
+                    currentStage === 4) && (
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={playerAnswer}
+                            onChange={(e) => setPlayerAnswer(e.target.value)}
+                            placeholder="Ketik jawaban kamu di sini..."
+                            className="border-2 md:border-4 border-black p-2 md:p-3 grow font-bold focus:outline-none focus:bg-yellow-50 text-sm md:text-base uppercase shadow-inner placeholder:text-stone-400"
+                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                          />
+                          <button
+                            type="button"
+                            onClick={checkAnswer}
+                            className="bg-black text-white py-2 px-4 md:px-8 font-black uppercase tracking-wider border-2 md:border-4 border-black hover:bg-stone-800 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer text-xs md:text-sm"
+                          >
+                            SIMPAN JAWABAN
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* TAMPILAN TAHAP 3 NEON GRID */}
+                  {currentStage === 3 && activeQuestion && (
+                    <div className="my-4 md:my-6 p-4 md:p-6 bg-stone-950 border-2 md:border-4 border-black text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+                      <div className="text-[8px] md:text-[10px] font-black text-emerald-400 tracking-widest uppercase mb-4 animate-pulse flex items-center justify-center gap-1.5">
+                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
+                        PENGANALISIS PERULANGAN LOGIKA AKTIF
+                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
+                      </div>
+
+                      <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3 my-4 md:my-6">
+                        {activeQuestion.question.match(/\d+,\s*\d+,\s*\d+,\s*\d+(,\s*\d+)?/)?.[0].split(',').map((numStr, idx) => (
+                          <div key={idx} className="flex items-center gap-1 md:gap-2">
+                            <div className="bg-stone-900 border md:border-2 border-emerald-500 text-emerald-400 font-mono text-base md:text-2xl font-black w-10 h-10 md:w-16 md:h-16 flex flex-col justify-center items-center relative">
+                              <span className="text-[6px] md:text-[8px] text-stone-500 absolute top-0.5 left-0.5 md:top-1 md:left-1">A_{idx + 1}</span>
+                              <span>{numStr.trim()}</span>
+                            </div>
+                            <span className="text-emerald-500 font-black text-sm md:text-xl">➔</span>
+                          </div>
+                        ))}
+
+                        <div className="bg-stone-900 border-2 md:border-4 border-dashed border-amber-400 text-amber-400 font-mono text-base md:text-2xl font-black w-10 h-10 md:w-16 md:h-16 flex flex-col justify-center items-center animate-bounce relative">
+                          <span className="text-[6px] md:text-[8px] text-amber-500 absolute top-0.5 left-0.5 md:top-1 md:left-1">TARGET</span>
+                          <span>{playerAnswer ? playerAnswer : "?"}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 md:mt-6 max-w-md mx-auto space-y-4">
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={playerAnswer}
+                            onChange={(e) => setPlayerAnswer(e.target.value)}
+                            placeholder="INPUT ANGKA..."
+                            className="border-2 md:border-4 border-black p-2 md:p-3 bg-white grow font-black font-mono text-center focus:outline-none focus:bg-emerald-50 text-sm md:text-lg shadow-inner placeholder:text-stone-300 tracking-widest"
+                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                          />
+                          <button
+                            type="button"
+                            onClick={checkAnswer}
+                            className="bg-emerald-400 text-black px-4 md:px-6 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-emerald-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
+                          >
+                            ⚡ SUNTIKKAN
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAMPILAN TAHAP 4 CYBER CONSOLE */}
+                  {currentStage === 4 && activeQuestion && (
+                    <div className="my-4 p-4 md:p-5 bg-stone-900 border-2 md:border-4 border-black text-left shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
+                      <div className="text-[8px] md:text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-cyan-400 rounded-full animate-ping" />
+                        MODUL DEKRIPSI // PORT_A47 AKTIF
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={playerAnswer}
+                            onChange={(e) => setPlayerAnswer(e.target.value)}
+                            placeholder="Ketik KAPITAL..."
+                            className="border-2 md:border-4 border-black p-2 md:p-3 bg-stone-950 text-cyan-400 font-black font-mono text-sm md:text-lg grow focus:outline-none uppercase tracking-widest placeholder:text-stone-700"
+                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                          />
+                          <button
+                            type="button"
+                            onClick={checkAnswer}
+                            className="bg-cyan-400 text-black px-4 md:px-8 py-2 md:py-3 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-cyan-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
+                          >
+                            🔓 PECAHKAN
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAHAP 4 CYBER CONSOLE */}
+                  {currentStage === 4 && activeQuestion && (
+                    <div className="my-4 p-4 md:p-5 bg-stone-900 border-2 md:border-4 border-black text-left shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
+                      <div className="text-[8px] md:text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-cyan-400 rounded-full animate-ping" />
+                        MODUL DEKRIPSI // PORT_A47 AKTIF
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={playerAnswer}
+                            onChange={(e) => setPlayerAnswer(e.target.value)}
+                            placeholder="Ketik KAPITAL..."
+                            className="border-2 md:border-4 border-black p-2 md:p-3 bg-stone-950 text-cyan-400 font-black font-mono text-sm md:text-lg grow focus:outline-none uppercase tracking-widest placeholder:text-stone-700"
+                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                          />
+                          <button
+                            type="button"
+                            onClick={checkAnswer}
+                            className="bg-cyan-400 text-black px-4 md:px-8 py-2 md:py-3 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-cyan-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
+                          >
+                            🔓 PECAHKAN
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BOTTOM INFO ACTION HINTS */}
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 pt-3 md:pt-4 border-t-2 border-stone-200 mt-4">
+                    <div className="text-[9px] md:text-xs text-blue-600 font-bold uppercase tracking-tight max-w-xl">
+                      💡 Format Pengisian: Isilah kolom jawaban dengan huruf KAPITAL penuh. Periksa kembali seluruh jawabanmu sebelum menekan tombol lanjut di akhir tahap!
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* VISUALISASI TARGET STRUKTUR TAHAP 6 */}
+              {currentStage === 6 && activeQuestion && (
+                <div className="border-2 md:border-4 border-black bg-white p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] md:text-xs text-stone-900 w-full overflow-hidden">
+                  <h3 className="text-[10px] md:text-xs font-black uppercase tracking-tight mb-2 text-stone-500">
+                    📋 TARGET BENTUK VISUAL (SOAL {activeQuestion.qNum})
+                  </h3>
+                  <p className="font-bold mb-3 text-stone-700 bg-stone-100 p-1.5 border border-black border-dashed leading-tight">
+                    {activeQuestion.qNum === 1 && "💡 Target: Urutkan murni dari nilai TERKECIL ke TERBESAR."}
+                    {activeQuestion.qNum === 2 && "💡 Target: Kelompokkan GANJIL di kiri (urut naik) dan GENAP di kanan (urut naik)."}
+                    {activeQuestion.qNum === 3 && "💡 Target: Urutkan berdasarkan abjad HURUF (A-C), lalu angka di belakangnya."}
+                    {activeQuestion.qNum === 4 && "💡 Target: Bentuk Formasi Gunung (Kiri mengurut naik, Kanan mengurut turun, terbesar di tengah)."}
+                    {activeQuestion.qNum === 5 && "💡 Target: Urutkan berdasarkan angka SATUAN. Satuan [0-4] di kiri, Satuan [5-9] di kanan."}
+                  </p>
+
+                  <div className="flex justify-start md:justify-center items-end gap-0.5 bg-stone-50 p-2 border-2 border-black min-h-25 overflow-x-auto w-full">
+                    {activeQuestion.qNum === 1 && [10, 20, 30, 40, 50, 60, 70, 80, 90, 99].map((val) => (
+                      <div key={val} style={{ height: `${20 + (val * 0.7)}px` }} className="flex-1 min-w-3.75 bg-emerald-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[6px] md:text-[8px] select-none">{val}</div>
                     ))}
-
-                    <div className="bg-stone-900 border-4 border-dashed border-amber-400 text-amber-400 font-mono text-xl md:text-2xl font-black w-14 h-14 md:w-16 md:h-16 flex flex-col justify-center items-center shadow-[0_0_12px_rgba(251,191,36,0.4)] animate-bounce relative">
-                      <span className="text-[8px] text-amber-500 font-bold absolute top-1 left-1">TARGET</span>
-                      <span className="drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]">
-                        {playerAnswer ? playerAnswer : "?"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 max-w-md mx-auto space-y-4">
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={playerAnswer}
-                        onChange={(e) => setPlayerAnswer(e.target.value)}
-                        placeholder="MASUKKAN ANGKA SOLUSI..."
-                        className="border-4 border-black p-3 bg-white grow font-black font-mono text-center focus:outline-none focus:bg-emerald-50 text-lg shadow-inner placeholder:text-stone-300 tracking-widest"
-                        onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={checkAnswer}
-                        className="bg-emerald-400 text-black px-6 font-black font-mono uppercase tracking-wider border-4 border-black hover:bg-emerald-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-xs md:text-sm"
-                      >
-                        ⚡ SUNTIKKAN KODE
-                      </button>
-                    </div>
-                    <div className="text-[10px] font-bold text-stone-500 uppercase tracking-tight">
-                      Tekan langsung tuts <kbd className="bg-stone-200 px-1 border border-black rounded shadow-sm">ENTER</kbd> atau tekan Suntikkan Kode untuk segera memverifikasi arus lalu lintas logika.
-                    </div>
+                    {activeQuestion.qNum === 2 && [11, 33, 55, 77, 89, 93, 12, 24, 46, 68, 70, 82].map((val, i) => (
+                      <div key={val} style={{ height: `${20 + (val * 0.7)}px` }} className={`flex-1 min-w-3.75 border border-black flex flex-col justify-between items-center py-0.5 md:py-1 font-black text-[6px] md:text-[7px] select-none ${i < 6 ? 'bg-purple-200' : 'bg-blue-200'}`}><span>{val}</span></div>
+                    ))}
+                    {activeQuestion.qNum === 3 && ['A2', 'A5', 'A9', 'B1', 'B4', 'B8', 'C3', 'C6', 'C7', 'C9'].map((val, i) => (
+                      <div key={val} style={{ height: `${30 + (i * 6)}px` }} className="flex-1 min-w-3.75 bg-amber-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[6px] md:text-[8px] select-none">{val}</div>
+                    ))}
+                    {activeQuestion.qNum === 4 && [15, 30, 45, 65, 80, 98, 85, 70, 50, 35, 20].map((val, i) => (
+                      <div key={i} style={{ height: `${20 + (val * 0.7)}px` }} className="flex-1 min-w-3.75 bg-teal-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[6px] md:text-[8px] select-none">{val}</div>
+                    ))}
+                    {activeQuestion.qNum === 5 && [10, 32, 44, 71, 83, 94, 25, 37, 56, 68, 79, 85].map((val, i) => (
+                      <div key={i} style={{ height: `${20 + (val * 0.7)}px` }} className={`flex-1 min-w-3.75 border border-black flex flex-col justify-between items-center py-0.5 font-black text-[6px] md:text-[7px] select-none ${i < 6 ? 'bg-rose-200' : 'bg-orange-200'}`}><span>{val}</span></div>
+                    ))}
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* 🟢 TAMPILAN BARU TAHAP 4: CYBER DECRYPTER CONSOLE */}
-              {currentStage === 4 && activeQuestion && (
-                <div className="my-4 p-5 bg-stone-900 border-4 border-black text-left shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
-                  <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" />
-                    MODUL DEKRIPSI // PORT_A47 AKTIF
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={playerAnswer}
-                        onChange={(e) => setPlayerAnswer(e.target.value)}
-                        placeholder={activeQuestion.question.includes('ANGKA KUNCI') ? "MASUKKAN ANGKA KUNCI..." : "MASUKKAN KODE teks jelas / SANDI..."}
-                        className="border-4 border-black p-3 bg-stone-950 text-cyan-400 font-black font-mono text-lg grow focus:outline-none focus:ring-2 focus:ring-cyan-400 uppercase tracking-widest placeholder:text-stone-700"
-                        onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={checkAnswer}
-                        className="bg-cyan-400 text-black px-8 font-black font-mono uppercase tracking-wider border-4 border-black hover:bg-cyan-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] whitespace-nowrap text-xs md:text-sm"
-                      >
-                        🔓 PECAHKAN DATA
-                      </button>
-                    </div>
-                    <div className="text-[9px] font-bold text-stone-500 uppercase tracking-tight">
-                      Pakai selalu jenis huruf KAPITAL mutlak sewaktu hendak mengetik frasa gabungan dari pengenkripsian/pendekripsian laju paket data siber.
-                    </div>
-                  </div>
+          {/* ========================================================================= */}
+          {/* 🚨 RETRO MODAL: JENDELA POP-UP KONFIRMASI KUNCI TAHAP GURU                 */}
+          {/* ========================================================================= */}
+          {showStageConfirmPopup && (
+            <div className="fixed inset-0 bg-stone-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white border-4 border-black p-5 md:p-6 max-w-sm w-full text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-4">
+                <div className="w-12 h-12 bg-amber-300 border-2 border-black rounded-full flex items-center justify-center text-xl font-black mx-auto animate-pulse">
+                  ⚠️
                 </div>
-              )}
-
-              {/* HINT PETUNJUK FORMAT JAWABAN & TOMBOL DEVELOPER BYPASS */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-4 border-t-2 border-stone-200">
-                <div className="text-xs text-blue-600 font-bold uppercase tracking-tight max-w-xl">
-                  {activeQuestion?.type === 'ARRAY-SORT' && "💡 Petunjuk Tata Cara Pengetikan: Letakkan kurung siku maupun pembatas koma tanpa menyelipkan bentuk ruang kosong (contoh pola: [3,5,1])"}
-                  {activeQuestion?.type === 'BINARY-NODE' && activeQuestion?.question.includes('KODE BINER') && "💡 Petunjuk Tata Cara Pengetikan: Ketik langsung sasaran tanggapan dalam kombinasi 5 digit susunan angka biner komplit (contoh tebakan: 01101)"}
-                  {activeQuestion?.type === 'BINARY-NODE' && activeQuestion?.question.includes('angka desimal') && "💡 Petunjuk Tata Cara Pengetikan: Tulis format ketikan balasanmu berbentuk angka desimal penomoran biasa (contoh isian: 19)"}
-                  {currentStage === 5 && "💡 Tuntunan Pola Bermain: Langsung tunjuk serta klik bagian kotak menempel pada kolom maupun bidang baris yang menurut instingmu ketahuan menyimpan susunan jumlah digit angka bernilai 1 ganjil. Manakala salah sasaran perolehan klik, area letak tata letak hitungan biner akan seketika diatur acak mundur kembali!"}
-                  {currentStage === 6 && "💡 Tuntunan Pola Bermain: Seret balok kuning ke titik putus-putus untuk memindahkannya."}
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-tight text-stone-900">Konfirmasi Perpindahan</h3>
+                  <p className="text-[11px] md:text-xs font-bold text-stone-500 uppercase leading-relaxed mt-1">
+                    Akan masuk ke tahap selanjutnya, periksa jawaban lagi atau lanjut?
+                  </p>
                 </div>
-
-                <div className="flex gap-2 w-full md:w-auto justify-end">
+                <div className="bg-stone-50 border-2 border-black p-2 text-[10px] font-bold text-stone-600 uppercase">
+                  📌 Catatan: Begitu kamu menekan tombol LANJUT, nilai dari Tahap {currentStage} akan dikunci mati dan tidak bisa diubah kembali!
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={shuffleCurrentQuestion}
-                    className="bg-stone-200 hover:bg-stone-300 text-stone-900 border-4 border-black text-xs px-3 py-2 font-black uppercase transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 whitespace-nowrap"
+                    onClick={() => setShowStageConfirmPopup(false)}
+                    className="bg-stone-200 hover:bg-stone-300 text-black border-2 border-black p-2 font-black uppercase text-[10px] tracking-wider cursor-pointer"
                   >
-                    🔄 ACAK ULANG VARIASI
+                    🔍 Periksa Lagi
                   </button>
-
                   <button
                     type="button"
-                    onClick={skipQuestion}
-                    className="bg-red-600 hover:bg-red-700 text-white border-4 border-black text-xs px-3 py-2 font-black uppercase transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 whitespace-nowrap"
+                    onClick={eksekusiPindahTahapResmi}
+                    className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-black p-2 font-black uppercase text-[10px] tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] cursor-pointer"
                   >
-                    ⏩ PAKSA SOAL BERIKUTNYA
+                    🚀 Lanjut
                   </button>
                 </div>
               </div>
-
             </div>
-          </div>
-
-          {/* KOLOM KANAN: BROADCAST WIRE & PAPAN PANDUAN */}
-          <div className="space-y-6">
-
-            <div className="border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-              <h2 className="text-lg font-black mb-2 uppercase tracking-tight">📠 PANEL INFORMASI</h2>
-              <div className="space-y-1.5 text-xs bg-stone-950 text-emerald-400 p-3 rounded font-mono h-48 overflow-y-auto shadow-inner border-2 border-black">
-                {gameLogs.map((log, idx) => (
-                  <div key={idx} className="leading-relaxed">&gt; {log}</div>
-                ))}
-                <div ref={logEndRef} />
-              </div>
-            </div>
-
-            {currentStage === 6 && activeQuestion && (
-              <div className="border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-xs text-stone-900">
-                <h3 className="text-xs font-black uppercase tracking-tight mb-2 text-stone-500">
-                  📋 TARGET BENTUK STRUKTUR VISUAL (SOAL {activeQuestion.qNum})
-                </h3>
-
-                <p className="font-bold mb-3 text-stone-700 bg-stone-100 p-1.5 border border-black border-dashed leading-tight">
-                  {activeQuestion.qNum === 1 && "💡 Target Sasaran: Rapikan blok letak keseluruhan data bertumpuk berurutan naik dari yang posisinya paling merendah hingga memuncak tajam setinggi-tingginya."}
-                  {activeQuestion.qNum === 2 && "💡 Target Sasaran: Himpun gugus angka golongan Ganjil merapat tepat bagian kiri (menyusun naik meruncing ke atas), kemudian gabungkan angka golongan Genap tumpuk sisi samping kanan (sama urut posisinya semakin meningkat ke atas)."}
-                  {activeQuestion.qNum === 3 && "💡 Target Sasaran: Tertibkan susunan tumpukan mengikuti urutan abjad pelafalan Huruf di letak depannya secara teliti lebih dulu (posisi perawalan A menukik tajam menuju batas C), setelah berhasil barulah berpatok menyesuaikan deret nomor angka letak sebelah belakangnya."}
-                  {activeQuestion.qNum === 4 && "💡 Target Sasaran: Rakit sebuah pola bangunan susunan layaknya menara yang seimbang sisi kembar. Bergerak terus mendaki posisi lebih naik melintasi sayap kiri, dan menuruni perlahan turun merendah membelah garis batas luaran kanan, puncaknya bertemu titik perpotongan pusat dengan susunan ketinggian bernilai puncak tertinggi!"}
-                  {activeQuestion.qNum === 5 && "💡 Target Sasaran: Amati fokus pada susunan deret digit nilai angka penempatan satuan (posisi ujung sisi paling ekor akhir baloknya). Jejerkan kumpulan blok kotak memuat angka ujung ekor [0-4] ke sayap kiri (mengurut naik perlahan), berikutnya tempatkan blok sisanya nilai [5-9] pada sudut sebelah sayap letak kanan luarnya (mengurut perlahan melaju ke posisi atas)."}
-                </p>
-
-                <div className="flex justify-center items-end gap-0.5 bg-stone-50 p-3 border-2 border-black min-h-27,5">
-
-                  {activeQuestion.qNum === 1 && [10, 20, 30, 40, 50, 60, 70, 80, 90, 99].map((val) => (
-                    <div key={val} style={{ height: `${20 + (val * 0.7)}px` }} className="flex-1 bg-emerald-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[8px] select-none">
-                      {val}
-                    </div>
-                  ))}
-
-                  {activeQuestion.qNum === 2 && [11, 33, 55, 77, 89, 93, 12, 24, 46, 68, 70, 82].map((val, i) => (
-                    <div key={val} style={{ height: `${20 + (val * 0.7)}px` }} className={`flex-1 border border-black flex flex-col justify-between items-center py-1 font-black text-[7px] select-none ${i < 6 ? 'bg-purple-200' : 'bg-blue-200'}`}>
-                      <span>{val}</span>
-                      <span className="text-[5px] scale-75 opacity-40">{i === 2 ? 'GJ' : i === 8 ? 'GN' : ''}</span>
-                    </div>
-                  ))}
-
-                  {activeQuestion.qNum === 3 && ['A2', 'A5', 'A9', 'B1', 'B4', 'B8', 'C3', 'C6', 'C7', 'C9'].map((val, i) => (
-                    <div key={val} style={{ height: `${30 + (i * 6)}px` }} className="flex-1 bg-amber-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[8px] select-none">
-                      {val}
-                    </div>
-                  ))}
-
-                  {activeQuestion.qNum === 4 && [15, 30, 45, 65, 80, 98, 85, 70, 50, 35, 20].map((val, i) => (
-                    <div key={i} style={{ height: `${20 + (val * 0.7)}px` }} className="flex-1 bg-teal-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[8px] select-none">
-                      {val}
-                    </div>
-                  ))}
-
-                  {activeQuestion.qNum === 5 && [10, 32, 44, 71, 83, 94, 25, 37, 56, 68, 79, 85].map((val, i) => {
-                    const ekor = val % 10;
-                    return (
-                      <div key={i} style={{ height: `${20 + (val * 0.7)}px` }} className={`flex-1 border border-black flex flex-col justify-between items-center py-0.5 font-black text-[7px] select-none ${i < 6 ? 'bg-rose-200' : 'bg-orange-200'}`}>
-                        <span>{val}</span>
-                        <span className="text-[6px] font-normal scale-75 opacity-60">e:{ekor}</span>
-                      </div>
-                    );
-                  })}
-
-                </div>
-
-                <div className="text-[9px] text-stone-400 font-bold text-center mt-2 uppercase tracking-tight">
-                  ℹ️ Model simulasi contoh cetakan arsitektur tumpukan balok memakai pemetaan bentuk berskala pemodelan sekitar 10 sampai 12 contoh kepingan.
-                </div>
-              </div>
-            )}
-
-          </div>
-
-        </div>
+          )}
+        </>
       )}
-
-      {/* 🛠️ DEVELOPER TESTING OVERLAY */}
-      <div className="mt-12 border-4 border-dashed border-red-500 bg-red-50 p-4 shadow-[4px_4px_0px_0px_rgba(239,68,68,1)]">
-        <h3 className="text-sm font-black text-red-700 uppercase tracking-wider mb-2">
-          ⚙️ Konsol Dev: Fitur Pengujian Sistem Pintas (Bypass Modul Tahapan Ujian)
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {[1, 2, 3, 4, 5, 6].map((stageNum) => (
-            <button
-              key={stageNum}
-              type="button"
-              onClick={() => {
-                setCurrentStage(stageNum);
-                setQuestionsAnsweredInStage(0);
-
-                const devQ = generateQuestion(stageNum, 0);
-                setActiveQuestion(devQ);
-                setPlayerAnswer('');
-                setFeedback({ type: 'success', msg: `Memicu pelompatan sistem sukses memasuki letak Tahap ${stageNum}.` });
-                logEvent(`Konsol Dev: Mengalihkan fokus kendali saluran perpindahan sistem menunju lintasan Tahap ${stageNum}.`);
-
-                if (stageNum === 6) {
-                  setCurrentArrayData(devQ ? [...devQ.initialArray] : []);
-                  setStudentMoves(0);
-                }
-              }}
-              className={`px-3 py-1 text-xs font-black uppercase border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] ${currentStage === stageNum ? 'bg-red-500 text-white' : 'bg-white text-black hover:bg-stone-100'
-                }`}
-            >
-              Tahap {stageNum}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              setIsExamComplete(true);
-              setActiveQuestion(null);
-              setFeedback({ type: 'success', msg: 'Sukses mempercepat loncatan menembus area pemunculan bingkai layar penghabisan modul sesi kalkulasi angka uji kemampuan!' });
-            }}
-            className="px-3 py-1 text-xs font-black uppercase bg-yellow-300 text-black border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-yellow-400"
-          >
-            🏁 Loncat Membuka Layar Lembar Hasil Penilaian Akhir
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
