@@ -559,12 +559,13 @@ export default function App() {
   const [isExamComplete, setIsExamComplete] = useState(false);
 
 
+  // ✅ PERBAIKAN STATE: Mengunci penampung teks login siswa agar tidak memicu 'no-undef'
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!localStorage.getItem('tycoon_nama_siswa');
   });
-  const [studentName, setStudentName] = useState('');
-  const [studentClass, setStudentClass] = useState('');
-  const [inputToken, setInputToken] = useState('');
+  const [studentName, setStudentName] = useState(() => localStorage.getItem('tycoon_nama_siswa') || '');
+  const [studentClass, setStudentClass] = useState(() => localStorage.getItem('tycoon_kelas_siswa') || '');
+  const [inputToken, setInputToken] = useState(() => localStorage.getItem('tycoon_token_aktif') || '');
   const [isLoading, setIsLoading] = useState(false);
 
   // State pengontrol kemunculan jendela pop-up konfirmasi perpindahan babak
@@ -934,8 +935,7 @@ export default function App() {
           <p className="text-[10px] md:text-xs font-bold text-stone-400 text-center uppercase tracking-widest mb-4 md:mb-6">PENILAIAN AKHIR SEMESTER GENAP KODING</p>
 
           {feedback.msg && (
-            <div className={`p-3 mb-4 md:mb-6 border-2 md:border-4 border-black font-bold uppercase text-xs text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'
-              }`}>
+            <div className={`p-3 mb-4 md:mb-6 border-2 md:border-4 border-black font-bold uppercase text-xs md:text-sm text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'}`}>
               {feedback.msg}
             </div>
           )}
@@ -992,14 +992,13 @@ export default function App() {
           </header>
 
           {feedback.msg && (
-            <div className={`p-3 mb-4 md:mb-6 border-2 md:border-4 border-black font-bold uppercase text-xs md:text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'
-              }`}>
+            <div className={`p-3 mb-4 md:mb-6 border-2 md:border-4 border-black font-bold uppercase text-xs md:text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${feedback.type === 'error' ? 'bg-rose-300' : 'bg-emerald-300'}`}>
               {feedback.msg}
             </div>
           )}
 
           {/* ========================================================================= */}
-          {/* 📊 STRUKTUR BARU: PANEL UTAMA MONITORING & REKAP NILAI DIREKTUR GURU       */}
+          {/* 📊 PANEL UTAMA MONITORING & REKAP NILAI DIREKTUR GURU                     */}
           {/* ========================================================================= */}
           {currentStage === 999 ? (
             <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-4xl mx-auto">
@@ -1056,431 +1055,393 @@ export default function App() {
           ) : (
             /* KONTEN UTAMA JALANNYA SOAL (TAHAP 1-6) */
             <div className="w-full max-w-3xl mx-auto">
+              {/* CONTAINER UTAMA SOAL */}
               <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
 
-                  <div className="bg-black text-white p-3 md:p-4 mb-4 border-2 border-black flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                    <div>
-                      <h2 className="text-base md:text-xl font-black uppercase tracking-wide">💼 {STAGE_CONFIG[currentStage].title}</h2>
-                      <p className="text-[9px] md:text-xs text-stone-300 font-bold mt-0.5">{STAGE_CONFIG[currentStage].description}</p>
+                <div className="bg-black text-white p-3 md:p-4 mb-4 border-2 border-black flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <div>
+                    <h2 className="text-base md:text-xl font-black uppercase tracking-wide">💼 {STAGE_CONFIG[currentStage].title}</h2>
+                    <p className="text-[9px] md:text-xs text-stone-300 font-bold mt-0.5">{STAGE_CONFIG[currentStage].description}</p>
+                  </div>
+                  <div className="bg-blue-600 text-white border-2 border-white px-2 py-1 md:px-3 md:py-1 font-black text-[10px] md:text-xs uppercase shadow-[2px_2px_0px_rgba(255,255,255,1)] whitespace-nowrap text-center">
+                    SOAL {questionsAnsweredInStage + 1} / {
+                      currentStage === 1 ? 9 :
+                        currentStage === 2 ? 10 :
+                          currentStage === 4 ? 10 : 5
+                    }
+                  </div>
+                </div>
+
+                {/* 📊 INTERAKTIF JALUR SERET & SISIP UNTUK TAHAP 6 */}
+                {currentStage === 6 && currentArrayData.length > 0 && (
+                  <div className="my-4 md:my-6 w-full mx-auto bg-white border-2 md:border-4 border-black p-3 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
+                    <div className="text-[10px] md:text-xs font-bold text-stone-500 uppercase mb-4 tracking-wider flex justify-between px-1 md:px-2">
+                      <span>Langkah: <strong className="text-blue-600">{studentMoves}</strong></span>
+                      <span>Batas Efektif: <strong className="text-rose-600">{activeQuestion?.maxEffectiveMoves}</strong></span>
                     </div>
-                    <div className="bg-blue-600 text-white border-2 border-white px-2 py-1 md:px-3 md:py-1 font-black text-[10px] md:text-xs uppercase shadow-[2px_2px_0px_rgba(255,255,255,1)] whitespace-nowrap text-center">
-                      SOAL {questionsAnsweredInStage + 1} / {
-                        currentStage === 1 ? 9 :
-                          currentStage === 2 ? 10 :
-                            currentStage === 4 ? 10 : 5
-                      }
+
+                    <div className="flex justify-start md:justify-center items-end gap-1 md:gap-1.5 bg-stone-100 p-2 md:p-4 border-2 md:border-4 border-black border-double min-h-40 md:min-h-55 w-full overflow-x-auto">
+                      {currentArrayData.map((value, idx) => {
+                        const isTargetHovered = draggedOverIdx === idx;
+                        let numericWeight = typeof value === 'string'
+                          ? (value.charCodeAt(0) - 50) * 10 + parseInt(value[1] || 0, 10) * 2
+                          : value;
+                        const heightStyle = { height: `${40 + (numericWeight * 1.0)}px` };
+
+                        return (
+                          <div
+                            key={value}
+                            className="flex flex-1 items-end relative min-w-8.75 md:min-w-0"
+                            onDragEnter={(e) => handleDragEnter(e, idx)}
+                            onDragLeave={handleDragLeave}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, idx)}
+                          >
+                            {isTargetHovered && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 md:w-1.5 bg-yellow-400 border-l border-r md:border-l-2 md:border-r-2 border-black border-dashed animate-pulse z-20" />
+                            )}
+
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, idx)}
+                              style={heightStyle}
+                              className={`w-full border border-black md:border-2 md:border-black font-mono flex flex-col justify-between items-center py-1 md:py-2 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-[1px_1px_0px_rgba(0,0,0,1)] md:shadow-[1px_2px_0px_rgba(0,0,0,1)] select-none ${isTargetHovered ? 'bg-amber-100 border-dashed opacity-80 scale-95' : 'bg-orange-300 text-stone-900 hover:bg-orange-200'}`}
+                            >
+                              <span className="text-[7px] md:text-[9px] font-black opacity-30">
+                                {currentArrayData.length <= 15 ? `#${idx + 1}` : ''}
+                              </span>
+                              <span className={`font-black tracking-tighter ${currentArrayData.length > 20 ? 'text-[10px] md:text-xs' : 'text-xs md:text-sm'}`}>
+                                {value}
+                              </span>
+                              <span className="text-[6px] md:text-[9px] opacity-40">===</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
+                )}
 
-                  {/* 📊 INTERAKTIF JALUR SERET & SISIP UNTUK TAHAP 6 (Dioptimalkan Agar Bisa Scroll Horizontal di HP) */}
-                  {currentStage === 6 && currentArrayData.length > 0 && (
-                    <div className="my-4 md:my-6 w-full mx-auto bg-white border-2 md:border-4 border-black p-3 md:p-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
-                      <div className="text-[10px] md:text-xs font-bold text-stone-500 uppercase mb-4 tracking-wider flex justify-between px-1 md:px-2">
-                        <span>Langkah: <strong className="text-blue-600">{studentMoves}</strong></span>
-                        <span>Batas Efektif: <strong className="text-rose-600">{activeQuestion?.maxEffectiveMoves}</strong></span>
-                      </div>
-
-                      {/* Penambahan w-full dan overflow-x-auto agar tidak meluber di HP */}
-                      <div className="flex justify-start md:justify-center items-end gap-1 md:gap-1.5 bg-stone-100 p-2 md:p-4 border-2 md:border-4 border-black border-double min-h-40 md:min-h-55 w-full overflow-x-auto">
-                        {currentArrayData.map((value, idx) => {
-                          const isTargetHovered = draggedOverIdx === idx;
-                          let numericWeight = typeof value === 'string'
-                            ? (value.charCodeAt(0) - 50) * 10 + parseInt(value[1] || 0, 10) * 2
-                            : value;
-                          // Mengurangi sedikit height pengali agar muat di HP
-                          const heightStyle = { height: `${40 + (numericWeight * 1.0)}px` };
-
-                          return (
-                            <div
-                              key={value}
-                              className="flex flex-1 items-end relative min-w-8.75 md:min-w-0"
-                              onDragEnter={(e) => handleDragEnter(e, idx)}
-                              onDragLeave={handleDragLeave}
-                              onDragOver={handleDragOver}
-                              onDrop={(e) => handleDrop(e, idx)}
-                            >
-                              {isTargetHovered && (
-                                <div className="absolute left-0 top-0 bottom-0 w-1 md:w-1.5 bg-yellow-400 border-l border-r md:border-l-2 md:border-r-2 border-black border-dashed animate-pulse z-20" />
-                              )}
-
-                              <div
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, idx)}
-                                style={heightStyle}
-                                className={`w-full border border-black md:border-2 md:border-black font-mono flex flex-col justify-between items-center py-1 md:py-2 transition-all duration-150 cursor-grab active:cursor-grabbing shadow-[1px_1px_0px_rgba(0,0,0,1)] md:shadow-[1px_2px_0px_rgba(0,0,0,1)] select-none ${isTargetHovered ? 'bg-amber-100 border-dashed opacity-80 scale-95' : 'bg-orange-300 text-stone-900 hover:bg-orange-200'
-                                  }`}
-                              >
-                                <span className="text-[7px] md:text-[9px] font-black opacity-30">
-                                  {currentArrayData.length <= 15 ? `#${idx + 1}` : ''}
-                                </span>
-                                <span className={`font-black tracking-tighter ${currentArrayData.length > 20 ? 'text-[10px] md:text-xs' : 'text-xs md:text-sm'}`}>
-                                  {value}
-                                </span>
-                                <span className="text-[6px] md:text-[9px] opacity-40">===</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                {/* BOX KONSOL SOAL ACTIVE */}
+                {currentStage !== 3 && activeQuestion && (
+                  <div className="border-2 md:border-4 border-black bg-stone-50 p-4 md:p-6 mb-4 md:mb-6 shadow-inner relative">
+                    <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 flex gap-1">
+                      <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-red-500 rounded-full border border-black"></span>
+                      <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-yellow-500 rounded-full border border-black"></span>
+                      <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded-full border border-black"></span>
                     </div>
-                  )}
+                    <div className="text-right text-[9px] md:text-xs font-black text-stone-400 mb-2 uppercase tracking-widest">
+                      Kompilator Aktif
+                    </div>
 
-                  {/* BOX KONSOL SOAL ACTIVE */}
-                  {currentStage !== 3 && activeQuestion && (
-                    <div className="border-2 md:border-4 border-black bg-stone-50 p-4 md:p-6 mb-4 md:mb-6 shadow-inner relative">
-                      <div className="absolute top-1.5 left-1.5 md:top-2 md:left-2 flex gap-1">
-                        <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-red-500 rounded-full border border-black"></span>
-                        <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-yellow-500 rounded-full border border-black"></span>
-                        <span className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded-full border border-black"></span>
-                      </div>
-                      <div className="text-right text-[9px] md:text-xs font-black text-stone-400 mb-2 uppercase tracking-widest">
-                        Kompilator Aktif
-                      </div>
-
-                      {currentStage === 2 ? (
-                        <div className="space-y-4 mt-2 md:mt-4">
-                          <div className="text-sm md:text-base font-black leading-relaxed text-stone-800">
-                            {activeQuestion?.question}
-                          </div>
-                          <div className="bg-stone-950 p-3 md:p-4 border-2 md:border-4 border-black shadow-inner relative overflow-x-auto">
-                            <div className="absolute top-1 right-2 text-[6px] md:text-[8px] font-mono text-stone-600 font-bold tracking-widest">IDE_KODE_SEMU</div>
-                            <pre className="font-mono text-[10px] md:text-sm text-emerald-400 leading-relaxed tracking-wide whitespace-pre">
-                              {activeQuestion?.codeLines?.map((line, index) => (
-                                <div key={index} className="hover:bg-stone-900 px-1 py-0.5 rounded transition-colors">
-                                  {line}
-                                </div>
-                              ))}
-                            </pre>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm md:text-lg font-black leading-relaxed mt-2 md:mt-4 mb-2 md:mb-4">
+                    {currentStage === 2 ? (
+                      <div className="space-y-4 mt-2 md:mt-4">
+                        <div className="text-sm md:text-base font-black leading-relaxed text-stone-800">
                           {activeQuestion?.question}
                         </div>
-                      )}
-
-                      {/* RENDERING RETRO SWITCHES UNTUK TAHAP 1 (Diperkecil di Mobile) */}
-                      {currentStage === 1 && activeQuestion?.mode === 'switch' && (
-                        <div className="my-4 md:my-6 max-w-md mx-auto bg-white border-2 md:border-4 border-black p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
-                          <div className="grid grid-cols-5 gap-1 md:gap-2 mb-4">
-                            {[16, 8, 4, 2, 1].map((weight, idx) => (
-                              <div key={idx} className="flex flex-col items-center">
-                                <span className="text-[10px] md:text-xs text-stone-400 font-bold mb-1">[{weight}]</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setBinarySwitches(prev => {
-                                      const updated = [...prev];
-                                      updated[idx] = updated[idx] === 0 ? 1 : 0;
-                                      return updated;
-                                    });
-                                  }}
-                                  className={`w-10 h-14 md:w-12 md:h-16 border-2 md:border-4 border-black font-mono text-lg md:text-xl font-black flex items-center justify-center transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 select-none cursor-pointer ${binarySwitches[idx] === 1 ? 'bg-emerald-400 text-black translate-y-0.5 shadow-none' : 'bg-stone-200 text-stone-600'
-                                    }`}
-                                >
-                                  {binarySwitches[idx]}
-                                </button>
-                                <span className="text-[8px] md:text-[10px] text-stone-500 font-bold mt-1 uppercase">
-                                  {binarySwitches[idx] === 1 ? 'NYALA' : 'MATI'}
-                                </span>
+                        <div className="bg-stone-950 p-3 md:p-4 border-2 md:border-4 border-black shadow-inner relative overflow-x-auto">
+                          <div className="absolute top-1 right-2 text-[6px] md:text-[8px] font-mono text-stone-600 font-bold tracking-widest">IDE_KODE_SEMU</div>
+                          <pre className="font-mono text-[10px] md:text-sm text-emerald-400 leading-relaxed tracking-wide whitespace-pre">
+                            {activeQuestion?.codeLines?.map((line, index) => (
+                              <div key={index} className="hover:bg-stone-900 px-1 py-0.5 rounded transition-colors">
+                                {line}
                               </div>
                             ))}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={checkAnswer}
-                            className="w-full mt-2 bg-black text-white p-2 font-black uppercase text-[10px] md:text-xs tracking-wider border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer"
-                          >
-                            KIRIM KONFIGURASI SAKLAR
-                          </button>
-                        </div>
-                      )}
-
-                      {/* MATRIKS GRID PERSEGI PROGRESAL (Tambahan Overflow-X-Auto) */}
-                      {currentStage === 5 && activeQuestion?.gridData && (
-                        <div className="my-4 md:my-6 w-full overflow-x-auto p-1 md:p-2 bg-white border-2 md:border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                          <table className="mx-auto font-mono text-xs md:text-sm font-black border-collapse">
-                            <thead>
-                              <tr>
-                                <th className="p-1 text-stone-400 text-[9px] md:text-xs px-1 md:px-2"></th>
-                                {Array.from({ length: activeQuestion.gridSize }).map((_, colIdx) => (
-                                  <th key={colIdx} className="p-1 bg-stone-100 border border-black text-[9px] md:text-xs min-w-7.5 md:min-w-10">
-                                    K{colIdx + 1}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {activeQuestion.gridData.map((rowArr, rowIndex) => {
-                                const labelBaris = activeQuestion.gridSize - rowIndex;
-                                return (
-                                  <tr key={rowIndex}>
-                                    <td className="p-1 bg-stone-100 border border-black text-[9px] md:text-xs text-center font-bold px-1 md:px-2">B{labelBaris}</td>
-                                    {rowArr.map((cellValue, colIndex) => (
-                                      <td key={colIndex} className="p-0 border border-black">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleGridCellClick(rowIndex, colIndex)}
-                                          className={`w-full h-full p-2 md:p-3 text-center font-mono text-sm md:text-base font-extrabold transition-all cursor-pointer select-none active:scale-95 ${cellValue === 1 ? 'bg-stone-900 text-yellow-300 hover:bg-stone-800' : 'bg-white text-stone-800 hover:bg-stone-50'
-                                            }`}
-                                        >
-                                          {cellValue}
-                                        </button>
-                                      </td>
-                                    ))}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* INTERACTIVE LOGIC CIRCUIT TAHAP 2 */}
-                  {currentStage === 2 && activeQuestion?.mode === 'interactive-circuit' && (
-                    <div className="my-4 md:my-6 p-4 md:p-6 bg-stone-950 border-2 md:border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center relative rounded-md md:rounded-lg">
-                      <div className="max-w-md mx-auto bg-stone-900 p-4 md:p-6 border md:border-2 border-stone-800 rounded-lg font-mono text-white space-y-4 md:space-y-6">
-                        <div className="flex flex-wrap justify-center gap-2 md:gap-3">
-                          {activeQuestion.inputs.A !== undefined && (
-                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
-                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR A</span>
-                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.A === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                                {activeQuestion.inputs.A === 1 ? "AKTIF (1)" : "MATI (0)"}
-                              </span>
-                            </div>
-                          )}
-                          {activeQuestion.inputs.B !== undefined && (
-                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
-                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR B</span>
-                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.B === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                                {activeQuestion.inputs.B === 1 ? "AKTIF (1)" : "MATI (0)"}
-                              </span>
-                            </div>
-                          )}
-                          {activeQuestion.inputs.C !== undefined && (
-                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
-                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR C</span>
-                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.C === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                                {activeQuestion.inputs.C === 1 ? "AKTIF (1)" : "MATI (0)"}
-                              </span>
-                            </div>
-                          )}
-                          {activeQuestion.inputs.D !== undefined && (
-                            <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
-                              <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR D</span>
-                              <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.D === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
-                                {activeQuestion.inputs.D === 1 ? "AKTIF (1)" : "MATI (0)"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="bg-stone-950 p-2 md:p-3 border border-amber-500/20 rounded text-left text-[10px] md:text-xs space-y-1 md:space-y-2">
-                          <span className="text-amber-400 font-black block text-[8px] md:text-[10px] uppercase tracking-wider">📋 PANDUAN ATURAN ALIRAN SISTEM:</span>
-                          {activeQuestion.circuitType === 'LIGHT-AND' && (
-                            <p className="text-stone-300 leading-relaxed">**Aturan Seri (DAN):** Listrik hanya mengalir jika Saklar A **DAN** Saklar B dua-duanya berada di posisi **AKTIF (1)**.</p>
-                          )}
-                          {activeQuestion.circuitType === 'LIGHT-INVERT-AND' && (
-                            <p className="text-stone-300 leading-relaxed">**Aturan Inversi Seri:** Balikkan dulu nilai status Saklar A (1 jadi 0, 0 jadi 1). Lalu operasikan hasil hitungan baru itu secara **SERI (DAN)** dengan letak Saklar B.</p>
-                          )}
-                          {activeQuestion.circuitType === 'LIGHT-MIX-3WAY' && (
-                            <p className="text-stone-300 leading-relaxed">**Aturan Perpaduan:** Nilai hitungan **SERI (DAN)** antara letak Saklar A & B. Jika hasilnya siap, rangkaikan perpaduan itu secara **PARALEL (ATAU)** dengan posisi Saklar C.</p>
-                          )}
-                          {activeQuestion.circuitType === 'LIGHT-INVERT-MIX' && (
-                            <p className="text-stone-300 leading-relaxed">**Aturan Inversi Gabungan:** Tukar putaran pada letak Saklar A, lalu satukan memakai **SERI (DAN)** bersama kedudukan Saklar B. Di sisi berbeda, tukar pula nilai Saklar C. Terakhir, gabungkan kedua jalur tadi memanfaatkan operasi **PARALEL (ATAU)**.</p>
-                          )}
-                          {activeQuestion.circuitType === 'LIGHT-FINAL-BOSS-4WAY' && (
-                            <p className="text-stone-300 leading-relaxed">**Aturan Ujian Empat Saklar Bos:** Kerjakan perpaduan Jalur Atas (Saklar A **SERI** B). Berikutnya, kerjakan perpaduan Jalur Bawah (Saklar C **SERI** D). Lampu induk terakhir akan **MENYALA (1)** asalkan perhitungan antara Jalur Atas **ATAU** Jalur Bawah mempunyai arus senilai 1.</p>
-                          )}
-                        </div>
-
-                        <div className="bg-stone-950 p-3 md:p-4 border border-stone-800 rounded-md text-center">
-                          <span className="text-[8px] md:text-[10px] text-stone-400 font-black block mb-2">STATUS INDIKATOR LAMPU UTAMA (G1)</span>
-                          <button
-                            type="button"
-                            onClick={() => setCircuitGates(prev => ({ ...prev, G1: prev.G1 === null ? 0 : (prev.G1 === 0 ? 1 : null) }))}
-                            className={`w-full py-2 md:py-3 text-xs md:text-sm font-black border-2 md:border-4 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer ${circuitGates.G1 === null ? 'bg-stone-700 text-stone-300' : (circuitGates.G1 === 1 ? 'bg-yellow-400 text-black' : 'bg-rose-500 text-white')
-                              }`}
-                          >
-                            {circuitGates.G1 === null ? "💡 KLIK: JAWAB STATUS" : (circuitGates.G1 === 1 ? "💡 LAMPU MENYALA (1)" : "🔌 LAMPU MATI (0)")}
-                          </button>
+                          </pre>
                         </div>
                       </div>
-
-                      {/* ✅ UPDATE: Menyesuaikan pemicu simpan sirkuit dengan sistem navigasi paket */}
-                      <div className="mt-4 md:mt-6 max-w-xs mx-auto">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Cukup geser nomor ke depan, jawaban sirkuit siswa sudah otomatis aman terkunci di dalam stageAnswers
-                            navigasiKeSoal(1);
-                          }}
-                          className="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-2 px-3 md:py-3 md:px-4 border-2 md:border-4 border-black font-black uppercase tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-[10px] md:text-xs transition-all cursor-pointer"
-                        >
-                          ⚡ PERIKSA JAWABAN SAKLAR
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* PENGGANTI INPUT FORM TEXT LAMA: MENDUKUNG RE-CHECKING SISWA */}
-                  {((currentStage === 2 && activeQuestion?.mode !== 'interactive-circuit') ||
-                    (currentStage === 1 && activeQuestion?.mode !== 'switch') ||
-                    currentStage === 4 || currentStage === 3) && (
-                      <div className="space-y-4">
-                        <input
-                          type={currentStage === 3 ? "number" : "text"}
-                          value={playerAnswer}
-                          onChange={(e) => setPlayerAnswer(e.target.value)}
-                          placeholder="Ketik jawaban kamu di sini..."
-                          className="w-full border-2 md:border-4 border-black p-2 md:p-3 font-bold focus:outline-none focus:bg-yellow-50 text-sm md:text-base uppercase shadow-inner placeholder:text-stone-400"
-                        />
+                    ) : (
+                      <div className="text-sm md:text-lg font-black leading-relaxed mt-2 md:mt-4 mb-2 md:mb-4">
+                        {activeQuestion?.question}
                       </div>
                     )}
 
-                  {/* 🌟 PANEL BARU: TOMBOL NAVIGASI MAJU MUNDUR SOAL */}
-                  <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t-2 border-stone-200">
-                    <button
-                      type="button"
-                      disabled={questionsAnsweredInStage === 0}
-                      onClick={() => navigasiKeSoal(-1)}
-                      className="bg-stone-200 text-black py-2 px-4 font-black border-2 md:border-4 border-black hover:bg-stone-300 disabled:opacity-40 text-xs md:text-sm cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase"
-                    >
-                      ⬅️ Soal Sebelumnya
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigasiKeSoal(1)}
-                      className="bg-black text-white py-2 px-4 font-black border-2 md:border-4 border-black hover:bg-stone-800 text-xs md:text-sm cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase"
-                    >
-                      {questionsAnsweredInStage === (currentStage === 1 ? 8 : (currentStage === 2 || currentStage === 4 ? 9 : 4)) 
-                        ? "🔒 SELESAI TAHAP" 
-                        : "Soal Berikutnya ➡️"}
-                    </button>
-                  </div>
-
-                  {/* TAMPILAN TAHAP 3 NEON GRID */}
-                  {currentStage === 3 && activeQuestion && (
-                    <div className="my-4 md:my-6 p-4 md:p-6 bg-stone-950 border-2 md:border-4 border-black text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
-                      <div className="text-[8px] md:text-[10px] font-black text-emerald-400 tracking-widest uppercase mb-4 animate-pulse flex items-center justify-center gap-1.5">
-                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
-                        PENGANALISIS PERULANGAN LOGIKA AKTIF
-                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
-                      </div>
-
-                      <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3 my-4 md:my-6">
-                        {activeQuestion.question.match(/\d+,\s*\d+,\s*\d+,\s*\d+(,\s*\d+)?/)?.[0].split(',').map((numStr, idx) => (
-                          <div key={idx} className="flex items-center gap-1 md:gap-2">
-                            <div className="bg-stone-900 border md:border-2 border-emerald-500 text-emerald-400 font-mono text-base md:text-2xl font-black w-10 h-10 md:w-16 md:h-16 flex flex-col justify-center items-center relative">
-                              <span className="text-[6px] md:text-[8px] text-stone-500 absolute top-0.5 left-0.5 md:top-1 md:left-1">A_{idx + 1}</span>
-                              <span>{numStr.trim()}</span>
+                    {/* RENDERING RETRO SWITCHES UNTUK TAHAP 1 */}
+                    {currentStage === 1 && activeQuestion?.mode === 'switch' && (
+                      <div className="my-4 md:my-6 max-w-md mx-auto bg-white border-2 md:border-4 border-black p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center">
+                        <div className="grid grid-cols-5 gap-1 md:gap-2 mb-4">
+                          {[16, 8, 4, 2, 1].map((weight, idx) => (
+                            <div key={idx} className="flex flex-col items-center">
+                              <span className="text-[10px] md:text-xs text-stone-400 font-bold mb-1">[{weight}]</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBinarySwitches(prev => {
+                                    const updated = [...prev];
+                                    updated[idx] = updated[idx] === 0 ? 1 : 0;
+                                    return updated;
+                                  });
+                                }}
+                                className={`w-10 h-14 md:w-12 md:h-16 border-2 md:border-4 border-black font-mono text-lg md:text-xl font-black flex items-center justify-center transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 select-none cursor-pointer ${binarySwitches[idx] === 1 ? 'bg-emerald-400 text-black translate-y-0.5 shadow-none' : 'bg-stone-200 text-stone-600'}`}
+                              >
+                                {binarySwitches[idx]}
+                              </button>
+                              <span className="text-[8px] md:text-[10px] text-stone-500 font-bold mt-1 uppercase">
+                                {binarySwitches[idx] === 1 ? 'NYALA' : 'MATI'}
+                              </span>
                             </div>
-                            <span className="text-emerald-500 font-black text-sm md:text-xl">➔</span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={checkAnswer}
+                          className="w-full mt-2 bg-black text-white p-2 font-black uppercase text-[10px] md:text-xs tracking-wider border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 cursor-pointer"
+                        >
+                          KIRIM KONFIGURASI SAKLAR
+                        </button>
+                      </div>
+                    )}
+
+                    {/* MATRIKS GRID PERSEGI PROGRESAL */}
+                    {currentStage === 5 && activeQuestion?.gridData && (
+                      <div className="my-4 md:my-6 w-full overflow-x-auto p-1 md:p-2 bg-white border-2 md:border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                        <table className="mx-auto font-mono text-xs md:text-sm font-black border-collapse">
+                          <thead>
+                            <tr>
+                              <th className="p-1 text-stone-400 text-[9px] md:text-xs px-1 md:px-2"></th>
+                              {Array.from({ length: activeQuestion.gridSize }).map((_, colIdx) => (
+                                <th key={colIdx} className="p-1 bg-stone-100 border border-black text-[9px] md:text-xs min-w-7.5 md:min-w-10">
+                                  K{colIdx + 1}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeQuestion.gridData.map((rowArr, rowIndex) => {
+                              const labelBaris = activeQuestion.gridSize - rowIndex;
+                              return (
+                                <tr key={rowIndex}>
+                                  <td className="p-1 bg-stone-100 border border-black text-[9px] md:text-xs text-center font-bold px-1 md:px-2">B{labelBaris}</td>
+                                  {rowArr.map((cellValue, colIndex) => (
+                                    <td key={colIndex} className="p-0 border border-black">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleGridCellClick(rowIndex, colIndex)}
+                                        className={`w-full h-full p-2 md:p-3 text-center font-mono text-sm md:text-base font-extrabold transition-all cursor-pointer select-none active:scale-95 ${cellValue === 1 ? 'bg-stone-900 text-yellow-300 hover:bg-stone-800' : 'bg-white text-stone-800 hover:bg-stone-50'}`}
+                                      >
+                                        {cellValue}
+                                      </button>
+                                    </td>
+                                  ))}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* INTERACTIVE LOGIC CIRCUIT TAHAP 2 */}
+                {currentStage === 2 && activeQuestion?.mode === 'interactive-circuit' && (
+                  <div className="my-4 md:my-6 p-4 md:p-6 bg-stone-950 border-2 md:border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center relative rounded-md md:rounded-lg">
+                    <div className="max-w-md mx-auto bg-stone-900 p-4 md:p-6 border md:border-2 border-stone-800 rounded-lg font-mono text-white space-y-4 md:space-y-6">
+                      <div className="flex flex-wrap justify-center gap-2 md:gap-3">
+                        {activeQuestion.inputs.A !== undefined && (
+                          <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                            <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR A</span>
+                            <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.A === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                              {activeQuestion.inputs.A === 1 ? "AKTIF (1)" : "MATI (0)"}
+                            </span>
                           </div>
-                        ))}
-
-                        <div className="bg-stone-900 border-2 md:border-4 border-dashed border-amber-400 text-amber-400 font-mono text-base md:text-2xl font-black w-10 h-10 md:w-16 md:h-16 flex flex-col justify-center items-center animate-bounce relative">
-                          <span className="text-[6px] md:text-[8px] text-amber-500 absolute top-0.5 left-0.5 md:top-1 md:left-1">TARGET</span>
-                          <span>{playerAnswer ? playerAnswer : "?"}</span>
-                        </div>
+                        )}
+                        {activeQuestion.inputs.B !== undefined && (
+                          <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                            <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR B</span>
+                            <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.B === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                              {activeQuestion.inputs.B === 1 ? "AKTIF (1)" : "MATI (0)"}
+                            </span>
+                          </div>
+                        )}
+                        {activeQuestion.inputs.C !== undefined && (
+                          <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                            <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR C</span>
+                            <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.C === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                              {activeQuestion.inputs.C === 1 ? "AKTIF (1)" : "MATI (0)"}
+                            </span>
+                          </div>
+                        )}
+                        {activeQuestion.inputs.D !== undefined && (
+                          <div className="bg-stone-950 p-2 border border-stone-700 rounded text-center min-w-17.5 md:min-w-20 grow">
+                            <span className="text-stone-500 font-bold text-[8px] md:text-[9px] block mb-1">🔌 SAKLAR D</span>
+                            <span className={`text-[10px] md:text-xs font-black px-2 py-0.5 rounded ${activeQuestion.inputs.D === 1 ? 'bg-emerald-400 text-black' : 'bg-stone-800 text-stone-400'}`}>
+                              {activeQuestion.inputs.D === 1 ? "AKTIF (1)" : "MATI (0)"}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="mt-4 md:mt-6 max-w-md mx-auto space-y-4">
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            value={playerAnswer}
-                            onChange={(e) => setPlayerAnswer(e.target.value)}
-                            placeholder="INPUT ANGKA..."
-                            className="border-2 md:border-4 border-black p-2 md:p-3 bg-white grow font-black font-mono text-center focus:outline-none focus:bg-emerald-50 text-sm md:text-lg shadow-inner placeholder:text-stone-300 tracking-widest"
-                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                          />
-                          <button
-                            type="button"
-                            onClick={checkAnswer}
-                            className="bg-emerald-400 text-black px-4 md:px-6 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-emerald-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
-                          >
-                            ⚡ SUNTIKKAN
-                          </button>
-                        </div>
+                      <div className="bg-stone-950 p-2 md:p-3 border border-amber-500/20 rounded text-left text-[10px] md:text-xs space-y-1 md:space-y-2">
+                        <span className="text-amber-400 font-black block text-[8px] md:text-[10px] uppercase tracking-wider">📋 PANDUAN ATURAN ALIRAN SISTEM:</span>
+                        {activeQuestion.circuitType === 'LIGHT-AND' && (
+                          <p className="text-stone-300 leading-relaxed">**Aturan Seri (DAN):** Listrik hanya mengalir jika Saklar A **DAN** Saklar B dua-duanya berada di posisi **AKTIF (1)**.</p>
+                        )}
+                        {activeQuestion.circuitType === 'LIGHT-INVERT-AND' && (
+                          <p className="text-stone-300 leading-relaxed">**Aturan Inversi Seri:** Balikkan dulu nilai status Saklar A (1 jadi 0, 0 jadi 1). Lalu operasikan hasil hitungan baru itu secara **SERI (DAN)** dengan letak Saklar B.</p>
+                        )}
+                        {activeQuestion.circuitType === 'LIGHT-MIX-3WAY' && (
+                          <p className="text-stone-300 leading-relaxed">**Aturan Perpaduan:** Nilai hitungan **SERI (DAN)** antara letak Saklar A & B. Jika hasilnya siap, rangkaikan perpaduan itu secara **PARALEL (ATAU)** dengan posisi Saklar C.</p>
+                        )}
+                        {activeQuestion.circuitType === 'LIGHT-INVERT-MIX' && (
+                          <p className="text-stone-300 leading-relaxed">**Aturan Inversi Gabungan:** Tukar putaran pada letak Saklar A, lalu satukan memakai **SERI (DAN)** bersama kedudukan Saklar B. Di sisi berbeda, tukar pula nilai Saklar C. Terakhir, gabungkan kedua jalur tadi memanfaatkan operasi **PARALEL (ATAU)**.</p>
+                        )}
+                        {activeQuestion.circuitType === 'LIGHT-FINAL-BOSS-4WAY' && (
+                          <p className="text-stone-300 leading-relaxed">**Aturan Ujian Empat Saklar Bos:** Kerjakan perpaduan Jalur Atas (Saklar A **SERI** B). Berikutnya, kerjakan perpaduan Jalur Bawah (Saklar C **SERI** D). Lampu induk terakhir akan **MENYALA (1)** asalkan perhitungan antara Jalur Atas **ATAU** Jalur Bawah mempunyai arus senilai 1.</p>
+                        )}
+                      </div>
+
+                      <div className="bg-stone-950 p-3 md:p-4 border border-stone-800 rounded-md text-center">
+                        <span className="text-[8px] md:text-[10px] text-stone-400 font-black block mb-2">STATUS INDIKATOR LAMPU UTAMA (G1)</span>
+                        <button
+                          type="button"
+                          onClick={() => setCircuitGates(prev => ({ ...prev, G1: prev.G1 === null ? 0 : (prev.G1 === 0 ? 1 : null) }))}
+                          className={`w-full py-2 md:py-3 text-xs md:text-sm font-black border-2 md:border-4 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer ${circuitGates.G1 === null ? 'bg-stone-700 text-stone-300' : (circuitGates.G1 === 1 ? 'bg-yellow-400 text-black' : 'bg-rose-500 text-white')}`}
+                        >
+                          {circuitGates.G1 === null ? "💡 KLIK: JAWAB STATUS" : (circuitGates.G1 === 1 ? "💡 LAMPU MENYALA (1)" : "🔌 LAMPU MATI (0)")}
+                        </button>
                       </div>
                     </div>
-                  )}
 
-                  {/* TAMPILAN TAHAP 4 CYBER CONSOLE */}
-                  {currentStage === 4 && activeQuestion && (
-                    <div className="my-4 p-4 md:p-5 bg-stone-900 border-2 md:border-4 border-black text-left shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
-                      <div className="text-[8px] md:text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
-                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-cyan-400 rounded-full animate-ping" />
-                        MODUL DEKRIPSI // PORT_A47 AKTIF
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={playerAnswer}
-                            onChange={(e) => setPlayerAnswer(e.target.value)}
-                            placeholder="Ketik KAPITAL..."
-                            className="border-2 md:border-4 border-black p-2 md:p-3 bg-stone-950 text-cyan-400 font-black font-mono text-sm md:text-lg grow focus:outline-none uppercase tracking-widest placeholder:text-stone-700"
-                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                          />
-                          <button
-                            type="button"
-                            onClick={checkAnswer}
-                            className="bg-cyan-400 text-black px-4 md:px-8 py-2 md:py-3 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-cyan-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
-                          >
-                            🔓 PECAHKAN
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAHAP 4 CYBER CONSOLE */}
-                  {currentStage === 4 && activeQuestion && (
-                    <div className="my-4 p-4 md:p-5 bg-stone-900 border-2 md:border-4 border-black text-left shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
-                      <div className="text-[8px] md:text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
-                        <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-cyan-400 rounded-full animate-ping" />
-                        MODUL DEKRIPSI // PORT_A47 AKTIF
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={playerAnswer}
-                            onChange={(e) => setPlayerAnswer(e.target.value)}
-                            placeholder="Ketik KAPITAL..."
-                            className="border-2 md:border-4 border-black p-2 md:p-3 bg-stone-950 text-cyan-400 font-black font-mono text-sm md:text-lg grow focus:outline-none uppercase tracking-widest placeholder:text-stone-700"
-                            onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
-                          />
-                          <button
-                            type="button"
-                            onClick={checkAnswer}
-                            className="bg-cyan-400 text-black px-4 md:px-8 py-2 md:py-3 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-cyan-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
-                          >
-                            🔓 PECAHKAN
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* BOTTOM INFO ACTION HINTS */}
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 pt-3 md:pt-4 border-t-2 border-stone-200 mt-4">
-                    <div className="text-[9px] md:text-xs text-blue-600 font-bold uppercase tracking-tight max-w-xl">
-                      💡 Format Pengisian: Isilah kolom jawaban dengan huruf KAPITAL penuh. Periksa kembali seluruh jawabanmu sebelum menekan tombol lanjut di akhir tahap!
+                    <div className="mt-4 md:mt-6 max-w-xs mx-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigasiKeSoal(1);
+                        }}
+                        className="w-full bg-yellow-400 hover:bg-yellow-300 text-black py-2 px-3 md:py-3 md:px-4 border-2 md:border-4 border-black font-black uppercase tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] md:shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-y-0.5 text-[10px] md:text-xs transition-all cursor-pointer"
+                      >
+                        ⚡ PERIKSA JAWABAN SAKLAR
+                      </button>
                     </div>
                   </div>
+                )}
 
+                {/* PENGGANTI INPUT FORM TEXT LAMA: MENDUKUNG RE-CHECKING SISWA */}
+                {((currentStage === 2 && activeQuestion?.mode !== 'interactive-circuit') ||
+                  (currentStage === 1 && activeQuestion?.mode !== 'switch') ||
+                  currentStage === 4 || currentStage === 3) && (
+                    <div className="space-y-4">
+                      <input
+                        type={currentStage === 3 ? "number" : "text"}
+                        value={playerAnswer}
+                        onChange={(e) => setPlayerAnswer(e.target.value)}
+                        placeholder="Ketik jawaban kamu di sini..."
+                        className="w-full border-2 md:border-4 border-black p-2 md:p-3 font-bold focus:outline-none focus:bg-yellow-50 text-sm md:text-base uppercase shadow-inner placeholder:text-stone-400"
+                      />
+                    </div>
+                  )}
+
+                {/* 🌟 PANEL BARU: TOMBOL NAVIGASI MAJU MUNDUR SOAL */}
+                <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t-2 border-stone-200">
+                  <button
+                    type="button"
+                    disabled={questionsAnsweredInStage === 0}
+                    onClick={() => navigasiKeSoal(-1)}
+                    className="bg-stone-200 text-black py-2 px-4 font-black border-2 md:border-4 border-black hover:bg-stone-300 disabled:opacity-40 text-xs md:text-sm cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase"
+                  >
+                    ⬅️ Soal Sebelumnya
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigasiKeSoal(1)}
+                    className="bg-black text-white py-2 px-4 font-black border-2 md:border-4 border-black hover:bg-stone-800 text-xs md:text-sm cursor-pointer shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase"
+                  >
+                    {questionsAnsweredInStage === (currentStage === 1 ? 8 : (currentStage === 2 || currentStage === 4 ? 9 : 4))
+                      ? "🔒 SELESAI TAHAP"
+                      : "Soal Berikutnya ➡️"}
+                  </button>
                 </div>
+
+                {/* TAMPILAN TAHAP 3 NEON GRID */}
+                {currentStage === 3 && activeQuestion && (
+                  <div className="my-4 md:my-6 p-4 md:p-6 bg-stone-950 border-2 md:border-4 border-black text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
+                    <div className="text-[8px] md:text-[10px] font-black text-emerald-400 tracking-widest uppercase mb-4 animate-pulse flex items-center justify-center gap-1.5">
+                      <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
+                      PENGANALISIS PERULANGAN LOGIKA AKTIF
+                      <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500" />
+                    </div>
+
+                    <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3 my-4 md:my-6">
+                      {activeQuestion.question.match(/\d+,\s*\d+,\s*\d+,\s*\d+(,\s*\d+)?/)?.[0].split(',').map((numStr, idx) => (
+                        <div key={idx} className="flex items-center gap-1 md:gap-2">
+                          <div className="bg-stone-900 border md:border-2 border-emerald-500 text-emerald-400 font-mono text-base md:text-2xl font-black w-10 h-10 md:w-16 md:h-16 flex flex-col justify-center items-center relative">
+                            <span className="text-[6px] md:text-[8px] text-stone-500 absolute top-0.5 left-0.5 md:top-1 md:left-1">A_{idx + 1}</span>
+                            <span>{numStr.trim()}</span>
+                          </div>
+                          <span className="text-emerald-500 font-black text-sm md:text-xl">➔</span>
+                        </div>
+                      ))}
+
+                      <div className="bg-stone-900 border-2 md:border-4 border-dashed border-amber-400 text-amber-400 font-mono text-base md:text-2xl font-black w-10 h-10 md:w-16 md:h-16 flex flex-col justify-center items-center animate-bounce relative">
+                        <span className="text-[6px] md:text-[8px] text-amber-500 absolute top-0.5 left-0.5 md:top-1 md:left-1">TARGET</span>
+                        <span>{playerAnswer ? playerAnswer : "?"}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 md:mt-6 max-w-md mx-auto space-y-4">
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={playerAnswer}
+                          onChange={(e) => setPlayerAnswer(e.target.value)}
+                          placeholder="INPUT ANGKA..."
+                          className="border-2 md:border-4 border-black p-2 md:p-3 bg-white grow font-black font-mono text-center focus:outline-none focus:bg-emerald-50 text-sm md:text-lg shadow-inner placeholder:text-stone-300 tracking-widest"
+                          onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                        />
+                        <button
+                          type="button"
+                          onClick={checkAnswer}
+                          className="bg-emerald-400 text-black px-4 md:px-6 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-emerald-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
+                        >
+                          ⚡ SUNTIKKAN
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAMPILAN TAHAP 4 CYBER CONSOLE */}
+                {currentStage === 4 && activeQuestion && (
+                  <div className="my-4 p-4 md:p-5 bg-stone-900 border-2 md:border-4 border-black text-left shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative">
+                    <div className="text-[8px] md:text-[10px] font-mono text-cyan-400 uppercase tracking-widest mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+                      <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-cyan-400 rounded-full animate-ping" />
+                      MODUL DEKRIPSI // PORT_A47 AKTIF
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          value={playerAnswer}
+                          onChange={(e) => setPlayerAnswer(e.target.value)}
+                          placeholder="Ketik KAPITAL..."
+                          className="border-2 md:border-4 border-black p-2 md:p-3 bg-stone-950 text-cyan-400 font-black font-mono text-sm md:text-lg grow focus:outline-none uppercase tracking-widest placeholder:text-stone-700"
+                          onKeyDown={(e) => e.key === 'Enter' && checkAnswer()}
+                        />
+                        <button
+                          type="button"
+                          onClick={checkAnswer}
+                          className="bg-cyan-400 text-black px-4 md:px-8 py-2 md:py-3 font-black font-mono uppercase tracking-wider border-2 md:border-4 border-black hover:bg-cyan-300 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_rgba(0,0,0,1)] text-[10px] md:text-xs cursor-pointer"
+                        >
+                          🔓 PECAHKAN
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* BOTTOM INFO ACTION HINTS */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 pt-3 md:pt-4 border-t-2 border-stone-200 mt-4">
+                  <div className="text-[9px] md:text-xs text-blue-600 font-bold uppercase tracking-tight max-w-xl">
+                    💡 Format Pengisian: Isilah kolom jawaban dengan huruf KAPITAL penuh. Periksa kembali seluruh jawabanmu sebelum menekan tombol lanjut di akhir tahap!
+                  </div>
+                </div>
+
               </div>
 
               {/* VISUALISASI TARGET STRUKTUR TAHAP 6 */}
               {currentStage === 6 && activeQuestion && (
-                <div className="border-2 md:border-4 border-black bg-white p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] md:text-xs text-stone-900 w-full overflow-hidden">
+                <div className="border-2 md:border-4 border-black bg-white p-3 md:p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] md:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-mono text-[10px] md:text-xs text-stone-900 w-full overflow-hidden mt-4">
                   <h3 className="text-[10px] md:text-xs font-black uppercase tracking-tight mb-2 text-stone-500">
                     📋 TARGET BENTUK VISUAL (SOAL {activeQuestion.qNum})
                   </h3>
@@ -1502,8 +1463,8 @@ export default function App() {
                     {activeQuestion.qNum === 3 && ['A2', 'A5', 'A9', 'B1', 'B4', 'B8', 'C3', 'C6', 'C7', 'C9'].map((val, i) => (
                       <div key={val} style={{ height: `${30 + (i * 6)}px` }} className="flex-1 min-w-3.75 bg-amber-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[6px] md:text-[8px] select-none">{val}</div>
                     ))}
-                    {activeQuestion.qNum === 4 && [15, 30, 45, 65, 80, 98, 85, 70, 50, 35, 20].map((val, i) => (
-                      <div key={i} style={{ height: `${20 + (val * 0.7)}px` }} className="flex-1 min-w-3.75 bg-teal-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[6px] md:text-[8px] select-none">{val}</div>
+                    {activeQuestion.qNum === 4 && [15, 30, 45, 65, 80, 98, 85, 70, 50, 35, 20].map((val) => (
+                      <div key={val} style={{ height: `${20 + (val * 0.7)}px` }} className="flex-1 min-w-3.75 bg-teal-200 border border-black flex flex-col justify-end pb-1 items-center font-black text-[6px] md:text-[8px] select-none">{val}</div>
                     ))}
                     {activeQuestion.qNum === 5 && [10, 32, 44, 71, 83, 94, 25, 37, 56, 68, 79, 85].map((val, i) => (
                       <div key={i} style={{ height: `${20 + (val * 0.7)}px` }} className={`flex-1 min-w-3.75 border border-black flex flex-col justify-between items-center py-0.5 font-black text-[6px] md:text-[7px] select-none ${i < 6 ? 'bg-rose-200' : 'bg-orange-200'}`}><span>{val}</span></div>
