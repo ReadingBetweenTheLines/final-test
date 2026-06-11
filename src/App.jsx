@@ -752,9 +752,11 @@ export default function App() {
 
     // Looping pemeriksaan seluruh jawaban di Tahap ini secara rahasia
     stageQuestions.forEach((soal, idx) => {
-      if (!soal) return;
+      if (!soal) return; // 🔒 Guard 1: Lewati jika objek soal kosong
+      
       let jawabanSiswa = (stageAnswers[idx] || '').trim().toUpperCase();
       
+      // 1. Validasi khusus Saklar Biner Tahap 1
       if (currentStage === 1 && soal.mode === 'switch') {
         const sw = stageAnswers[`switch_${idx}`] || [0, 0, 0, 0, 0];
         const calculatedDecimal = sw.reduce((acc, bit, i) => acc + (bit * [16, 8, 4, 2, 1][i]), 0);
@@ -762,19 +764,22 @@ export default function App() {
         return;
       }
 
+      // 2. Validasi khusus Sirkuit Logika Tahap 2
       if (currentStage === 2 && soal.mode === 'interactive-circuit') {
         const gate = stageAnswers[`circuit_${idx}`] || { G1: null };
-        if (gate.G1 === soal.correctGates.G1) totalSkorBaru++; else totalSalahBaru++;
+        if (soal.correctGates && gate.G1 === soal.correctGates.G1) totalSkorBaru++; else totalSalahBaru++;
         return;
       }
 
+      // 3. Validasi khusus Parity Grid Tahap 5 (Sudah dihitung instan saat klik tabel)
       if (currentStage === 5) {
-        // Penilaian Parity Grid dihitung aman pasca-pindah (Default terisi benar jika diklik pas)
         return;
       }
 
-      // Validasi text input biasa
-      if (jawabanSiswa === soal.answer.trim().toUpperCase()) {
+      // 4. 🔒 Guard 2 & Perbaikan Utama: Validasi text input biasa dengan pengecekan aman (Safe-Trim)
+      const kunciJawabanAsli = soal.answer ? soal.answer.toString().trim().toUpperCase() : '';
+      
+      if (kunciJawabanAsli && jawabanSiswa === kunciJawabanAsli) {
         totalSkorBaru++;
       } else {
         totalSalahBaru++;
@@ -789,19 +794,22 @@ export default function App() {
       // Kirim hasil akhir ke Supabase
       const kirimNilaiAkhir = async () => {
         const nilaiKonversi = Math.round((totalSkorBaru / totalPossiblePoints) * 100);
-        await supabase.from('token_ujian').update({ sudah_ujian: true, skor_benar: totalSkorBaru, nilai_akhir: nilaiKonversi }).eq('kode_token', inputToken.trim().toUpperCase()).eq('nama_siswa', studentName.trim().toUpperCase());
+        await supabase
+          .from('token_ujian')
+          .update({ sudah_ujian: true, skor_benar: totalSkorBaru, nilai_akhir: nilaiKonversi })
+          .eq('kode_token', inputToken.trim().toUpperCase())
+          .eq('nama_siswa', studentName.trim().toUpperCase());
         localStorage.clear();
       };
       kirimNilaiAkhir();
     } else {
-    const nextStageNum = currentStage + 1;
-    localStorage.setItem('tycoon_tahap_sekarang', String(nextStageNum));
-    setCurrentStage(nextStageNum);
-    setQuestionsAnsweredInStage(0);
-    initStageQuestions(nextStageNum);
-    setShowStageConfirmPopup(false);
-    // Baris setPendingNextStage(null) di sini sudah dihapus bersih!
-  }
+      const nextStageNum = currentStage + 1;
+      localStorage.setItem('tycoon_tahap_sekarang', String(nextStageNum));
+      setCurrentStage(nextStageNum);
+      setQuestionsAnsweredInStage(0);
+      initStageQuestions(nextStageNum);
+      setShowStageConfirmPopup(false);
+    }
   };
 
   // Penanganan khusus klik tabel grid Tahap 5 langsung mengunci memori jawaban
