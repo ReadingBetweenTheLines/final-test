@@ -557,8 +557,37 @@ export default function App() {
 
   const logEvent = () => { };
 
-  // 🌟 FUNGSI BARU: Mengunci pengacakan soal hanya sekali di awal tahap
+  // 🌟 FUNGSI DIALIRKAN: Mengunci pengacakan soal dan mendukung pemulihan pasca-refresh
   const initStageQuestions = (stage) => {
+    // 1. Coba ambil paket soal yang mungkin sudah pernah disimpan di tahap ini
+    const savedPack = localStorage.getItem(`tycoon_pack_stage_${stage}`);
+    
+    if (savedPack) {
+      const parsedPack = JSON.parse(savedPack);
+      setStageQuestions(parsedPack);
+      
+      // Ambil kembali sisa lembar jawaban yang sudah terisi sebelumnya
+      const savedAnswers = localStorage.getItem(`tycoon_answers_stage_${stage}`);
+      if (savedAnswers) {
+        setStageAnswers(JSON.parse(savedAnswers));
+      } else {
+        setStageAnswers({});
+      }
+
+      // Pemulihan visual array khusus Tahap 6
+      if (stage === 6) {
+        const savedArray = localStorage.getItem('tycoon_array_terakhir');
+        if (savedArray) {
+          setCurrentArrayData(JSON.parse(savedArray));
+        } else if (parsedPack[0]?.initialArray) {
+          setCurrentArrayData([...parsedPack[0].initialArray]);
+        }
+        setStudentMoves(Number(localStorage.getItem('tycoon_moves_terakhir') || '0'));
+      }
+      return; // Keluar fungsi, tidak perlu mengacak ulang soal!
+    }
+
+    // 2. Jika belum ada data lokal, lakukan pengacakan soal baru seperti biasa
     let maxQuestions = 5;
     if (stage === 1) maxQuestions = 9;
     else if (stage === 2 || stage === 4) maxQuestions = 10;
@@ -567,43 +596,62 @@ export default function App() {
     for (let i = 0; i < maxQuestions; i++) {
       lockedPack.push(generateQuestion(stage, i));
     }
+    
+    // Simpan paket soal perdana ini ke localStorage agar permanen sepanjang tahap
+    localStorage.setItem(`tycoon_pack_stage_${stage}`, JSON.stringify(lockedPack));
     setStageQuestions(lockedPack);
-    setStageAnswers({}); // Kosongkan lembar jawaban baru
+    setStageAnswers({});
+    localStorage.removeItem(`tycoon_answers_stage_${stage}`);
 
-    // Khusus inisialisasi visual array Tahap 6
     if (stage === 6 && lockedPack[0]?.initialArray) {
       setCurrentArrayData([...lockedPack[0].initialArray]);
+      localStorage.setItem('tycoon_array_terakhir', JSON.stringify(lockedPack[0].initialArray));
       setStudentMoves(0);
+      localStorage.setItem('tycoon_moves_terakhir', '0');
     }
   };
 
   // 🌟 POINTER DINAMIS: Menjaga kompatibilitas kodingan visual lamamu
   const activeQuestion = stageQuestions[questionsAnsweredInStage] || null;
   const playerAnswer = stageAnswers[questionsAnsweredInStage] || '';
+  // 🌟 OLEH-OLEH MEMORI: Otomatis sinkronisasi ketikan teks ke localStorage
   const setPlayerAnswer = (teks) => {
-    setStageAnswers(prev => ({ ...prev, [questionsAnsweredInStage]: teks }));
+    setStageAnswers(prev => {
+      const updated = { ...prev, [questionsAnsweredInStage]: teks };
+      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const checkAnswer = () => {
     navigasiKeSoal(1);
   };
 
-  // Switch biner & Sirkuit sirkuit membaca memori per nomor soal
+  // ✅ KEMBALIKAN VARIABEL PEMBACA: Membaca memori saklar biner Tahap 1
   const binarySwitches = stageAnswers[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
+
+  // Otomatis sinkronisasi status saklar biner Tahap 1 ke localStorage
   const setBinarySwitches = (valOrFn) => {
     setStageAnswers(prev => {
       const currentVal = prev[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
       const newVal = typeof valOrFn === 'function' ? valOrFn(currentVal) : valOrFn;
-      return { ...prev, [`switch_${questionsAnsweredInStage}`]: newVal };
+      const updated = { ...prev, [`switch_${questionsAnsweredInStage}`]: newVal };
+      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updated));
+      return updated;
     });
   };
 
-  const circuitGates = stageAnswers[`circuit_${questionsAnsweredInStage}`] || { G1: null, G2: null, G3: null };
+  // ✅ KEMBALIKAN VARIABEL PEMBACA: Membaca memori lampu sirkuit Tahap 2
+  const circuitGates = stageAnswers[`circuit_${questionsAnsweredInStage}`] || { G1: null };
+
+  // Otomatis sinkronisasi klik gerbang sirkuit Tahap 2 ke localStorage
   const setCircuitGates = (valOrFn) => {
     setStageAnswers(prev => {
       const currentVal = prev[`circuit_${questionsAnsweredInStage}`] || { G1: null, G2: null, G3: null };
       const newVal = typeof valOrFn === 'function' ? valOrFn(currentVal) : valOrFn;
-      return { ...prev, [`circuit_${questionsAnsweredInStage}`]: newVal };
+      const updated = { ...prev, [`circuit_${questionsAnsweredInStage}`]: newVal };
+      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updated));
+      return updated;
     });
   };
 
@@ -634,7 +682,7 @@ export default function App() {
       const { data: dataSiswa, error } = await supabase
         .from('token_ujian')
         .select('*')
-        .eq('kode_token', inputToken.trim().toUpperCase())
+        .eq('kode_token', inputToken.trim().toUpperCase())  
         .eq('nama_siswa', studentName.trim().toUpperCase())
         .maybeSingle();
 
@@ -800,9 +848,17 @@ export default function App() {
           .eq('kode_token', inputToken.trim().toUpperCase())
           .eq('nama_siswa', studentName.trim().toUpperCase());
         localStorage.clear();
+        alert("✅ Ujian Selesai! Semua data jawaban Anda telah diamankan ke server pusat.");
+        window.location.reload(); 
       };
       kirimNilaiAkhir();
     } else {
+      // 🌟 HAPUS JEJAK LAMA: Bersihkan memori tahap yang baru saja diselesaikan agar tidak bentrok
+      localStorage.removeItem(`tycoon_pack_stage_${currentStage}`);
+      localStorage.removeItem(`tycoon_answers_stage_${currentStage}`);
+      localStorage.removeItem('tycoon_array_terakhir');
+      localStorage.removeItem('tycoon_moves_terakhir');
+
       const nextStageNum = currentStage + 1;
       localStorage.setItem('tycoon_tahap_sekarang', String(nextStageNum));
       setCurrentStage(nextStageNum);
