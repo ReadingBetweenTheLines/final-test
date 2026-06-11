@@ -290,69 +290,49 @@ function generateQuestion(stage, questionIndex = 0) {
         answer: scoreEvaluator.toString()
       };
     }
-    else if (questionIndex === 5) {
+    // 🌟 PERBAIKAN: Ganti questionIndex === 5 menjadi questionIndex === 4
+    else if (questionIndex === 4) { 
       const g1Correct = (inputA === 1 && inputB === 1) ? 1 : 0;
       return {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - KABEL SERI] 
-Aturan Aliran: Listrik mengalir lurus melewati Saklar A lalu ke Saklar B.
-
-Cara Menebak Status Lampu:
-1. Periksa angka Saklar A dan B di bawah.
-2. Jika ada SATU SAJA saklar yang mati (berangka 0), maka aliran listrik otomatis terputus.
-3. Lampu hanya bisa menyala jika kedua saklar terbukti kompak aktif.
-
-Gunakan langkah di atas untuk menentukan status lampu utama!`,
+        question: `[SOAL ${currentQuestionNum} - KABEL SERI] ...`,
         circuitType: 'LIGHT-AND',
         inputs: { A: inputA, B: inputB },
         correctGates: { G1: g1Correct }
       };
     }
-    else if (questionIndex === 6) {
+    // 🌟 PERBAIKAN: Ganti questionIndex === 6 menjadi questionIndex === 5
+    else if (questionIndex === 5) {
       const realA = inputA === 1 ? 0 : 1;
       const g1Correct = (realA === 1 && inputB === 1) ? 1 : 0;
       return {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - GERBANG TERBALIK] 
-Aturan Aliran: Jalur Saklar A dipasangi komponen pembalik (NOT) sebelum menyatu secara seri dengan Saklar B.
-
-Cara Menebak Status Lampu:
-1. Lihat angka asli Saklar A, lalu "BALIKKAN" nilainya (jika 0 ubah jadi 1, jika 1 ubah jadi 0).
-2. Ambil angka hasil pukulan baru tersebut, lalu pasangkan dengan angka asli Saklar B.
-3. Ingat aturan kabel seri: Aliran baru lolos ke lampu jika kedua angka pasangannya sama-sama bernilai 1.
-
-Ikuti petunjuk di atas untuk memeriksa apakah lampu berhasil menyala!`,
+        question: `[SOAL ${currentQuestionNum} - GERBANG TERBALIK] ...`,
         circuitType: 'LIGHT-INVERT-AND',
         inputs: { A: inputA, B: inputB },
         correctGates: { G1: g1Correct }
       };
     }
-    else if (questionIndex === 7) {
+    // 🌟 PERBAIKAN: Ganti questionIndex === 7 menjadi questionIndex === 6
+    else if (questionIndex === 6) {
       const jalurSeri = (inputA === 1 && inputB === 1) ? 1 : 0;
       const g1Correct = (jalurSeri === 1 || inputC === 1) ? 1 : 0;
       return {
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - PERCABANGAN GANDA] 
-Aturan Aliran: Listrik memiliki dua jalan alternatif (Paralel) untuk sampai ke lampu utama.
-
-Cara Menebak Status Lampu:
-1. Periksa JALUR ATAS: Listrik lolos jika Saklar A dan B kompak hidup (dua-duanya berangka 1).
-2. Periksa JALUR BAWAH: Listrik langsung lolos jika Saklar C sendirian berada di posisi hidup (angka 1).
-3. Gabungkan: Lampu pasti menyala (1) jika minimal ada SALAH SATU JALUR (atas atau bawah) yang sukses meloloskan listrik.
-
-Telusuri kedua jalur di bawah secara jeli untuk menemukan jawabanmu!`,
+        question: `[SOAL ${currentQuestionNum} - PERCABANGAN GANDA] ...`,
         circuitType: 'LIGHT-MIX-3WAY',
         inputs: { A: inputA, B: inputB, C: inputC },
         correctGates: { G1: g1Correct }
       };
     }
-    else if (questionIndex === 8) {
+    // 🌟 PERBAIKAN: Ganti questionIndex === 8 menjadi questionIndex === 7
+    else if (questionIndex === 7) {
       const realA = inputA === 1 ? 0 : 1;
       const realC = inputC === 1 ? 0 : 1;
       const jalurSeri = (realA === 1 && inputB === 1) ? 1 : 0;
@@ -361,22 +341,14 @@ Telusuri kedua jalur di bawah secara jeli untuk menemukan jawabanmu!`,
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - DOUBLE INVERSI] 
-Aturan Aliran: Dua jalan alternatif dengan komponen pembalik arus (NOT) pada saklar utamanya.
-
-Cara Menebak Status Lampu:
-1. Langkah Awal: "BALIKKAN" angka asli Saklar A dan Saklar C (tukar angka 0 menjadi 1, atau 1 menjadi 0).
-2. Hitung JALUR ATAS: Gunakan angka terbalik A tadi, gabungkan secara seri dengan angka asli B (harus sama-sama 1).
-3. Hitung JALUR BAWAH: Cukup lihat angka hasil balikan dari Saklar C.
-4. Lampu akan menyala (1) asalkan salah satu jalur tersebut berhasil mengalirkan listrik bernilai 1.
-
-Lakukan simulasi coretan di atas untuk menentukan status akhir lampu!`,
+        question: `[SOAL ${currentQuestionNum} - DOUBLE INVERSI] ...`,
         circuitType: 'LIGHT-INVERT-MIX',
         inputs: { A: inputA, B: inputB, C: inputC },
         correctGates: { G1: g1Correct }
       };
     }
-    else if (questionIndex === 9) {
+    // 🌟 PERBAIKAN: Ganti questionIndex === 9 menjadi questionIndex === 8
+    else if (questionIndex === 8) {
       const inputD = Math.random() > 0.5 ? 1 : 0;
       const jalurAtas = (inputA === 1 && inputB === 1) ? 1 : 0;
       const jalurBawah = (inputC === 1 && inputD === 1) ? 1 : 0;
@@ -385,17 +357,29 @@ Lakukan simulasi coretan di atas untuk menentukan status akhir lampu!`,
         type,
         qNum: currentQuestionNum,
         mode: 'interactive-circuit',
-        question: `[SOAL ${currentQuestionNum} - FILTRASI MATRIKS 4 SAKLAR] 
-Aturan Aliran: Dua cabang kelompok independen yang bersaing mengirimkan daya ke lampu induk.
-
-Cara Menebak Status Lampu:
-1. Evaluasi JALUR ATAS: Apakah pasangan Saklar A DAN B kompak berada di posisi 1? Jika ya, Jalur Atas lolos.
-2. Evaluasi JALUR BAWAH: Apakah pasangan Saklar C DAN D kompak berada di posisi 1? Jika ya, Jalur Bawah lolos.
-3. Lampu induk di ujung akan berhasil menyala (1) jika Jalur Atas ATAU Jalur Bawah sukses meloloskan aliran data.
-
-Uji tingkat kekompakan kedua kelompok saklar di bawah untuk mengisi jawaban!`,
+        question: `[SOAL ${currentQuestionNum} - FILTRASI MATRIKS 4 SAKLAR] ...`,
         circuitType: 'LIGHT-FINAL-BOSS-4WAY',
         inputs: { A: inputA, B: inputB, C: inputC, D: inputD },
+        correctGates: { G1: g1Correct }
+      };
+    }
+    // 🌟 PERBAIKAN: Tambahkan indeks 9 untuk melengkapi total paket 10 soal
+    else if (questionIndex === 9) {
+      const g1Correct = inputC === 1 ? 1 : 0;
+      return {
+        type,
+        qNum: currentQuestionNum,
+        mode: 'interactive-circuit',
+        question: `[SOAL ${currentQuestionNum} - KENDALI INDUK] 
+Aturan Aliran: Jalur saklar bypass langsung menuju lampu utama.
+
+Cara Menebak Status Lampu:
+1. Cukup perhatikan nilai dari Saklar C di bawah.
+2. Jika Saklar C bernilai 1, aliran listrik langsung lolos menuju lampu utama tanpa hambatan cabang lain.
+
+Gunakan logika bypass ini untuk menentukan jawaban akhir!`,
+        circuitType: 'LIGHT-AND', // Menggunakan template dasar yang sudah ada
+        inputs: { A: inputA, B: inputB, C: inputC },
         correctGates: { G1: g1Correct }
       };
     }
@@ -768,6 +752,7 @@ export default function App() {
 
     // Looping pemeriksaan seluruh jawaban di Tahap ini secara rahasia
     stageQuestions.forEach((soal, idx) => {
+      if (!soal) return;
       let jawabanSiswa = (stageAnswers[idx] || '').trim().toUpperCase();
       
       if (currentStage === 1 && soal.mode === 'switch') {
