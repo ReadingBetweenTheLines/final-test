@@ -542,6 +542,9 @@ export default function App() {
   const [feedback, setFeedback] = useState({ type: '', msg: '' });
   const [isExamComplete, setIsExamComplete] = useState(false);
 
+  // live streaming seluruh siswa untuk Panel Guru
+  const [liveStudentsData, setLiveStudentsData] = useState([]);
+
 
   // ✅ PERBAIKAN STATE: Mengunci penampung teks login siswa agar tidak memicu 'no-undef'
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -557,37 +560,83 @@ export default function App() {
 
   const logEvent = () => { };
 
-  // 🌟 FUNGSI DIALIRKAN: Mengunci pengacakan soal dan mendukung pemulihan pasca-refresh
-  const initStageQuestions = (stage) => {
-    // 1. Coba ambil paket soal yang mungkin sudah pernah disimpan di tahap ini
+  // 🌟 ENGINE LOCK SOAL & JAWABAN: Menjamin variasi soal dan jawaban selalu sinkron dari cloud
+  const initStageQuestions = async (stage) => {
+    // 1. Coba ambil dari localStorage seperti biasa (paling cepat)
     const savedPack = localStorage.getItem(`tycoon_pack_stage_${stage}`);
     
     if (savedPack) {
       const parsedPack = JSON.parse(savedPack);
       setStageQuestions(parsedPack);
       
-      // Ambil kembali sisa lembar jawaban yang sudah terisi sebelumnya
       const savedAnswers = localStorage.getItem(`tycoon_answers_stage_${stage}`);
       if (savedAnswers) {
-        setStageAnswers(JSON.parse(savedAnswers));
-      } else {
-        setStageAnswers({});
+        // Pulihkan sub-objek jawaban tahap ini ke dalam induk state global
+        setStageAnswers(prev => ({ ...prev, [`stage_${stage}`]: JSON.parse(savedAnswers) }));
       }
 
-      // Pemulihan visual array khusus Tahap 6
-      if (stage === 6) {
-        const savedArray = localStorage.getItem('tycoon_array_terakhir');
-        if (savedArray) {
-          setCurrentArrayData(JSON.parse(savedArray));
-        } else if (parsedPack[0]?.initialArray) {
-          setCurrentArrayData([...parsedPack[0].initialArray]);
-        }
-        setStudentMoves(Number(localStorage.getItem('tycoon_moves_terakhir') || '0'));
+      // === DI DALAM BAGIAN 1 (LOKAL): Pemulihan khusus Tahap 6 ===
+    if (stage === 6) {
+      const savedArray = localStorage.getItem('tycoon_array_terakhir');
+      if (savedArray) {
+        setCurrentArrayData(JSON.parse(savedArray));
+      } else if (parsedPack[questionsAnsweredInStage]?.savedProgressArray) {
+        // 🌟 KOREKSI: Gunakan progres simpanan nomor berjalan jika local_storage hilang sebagian
+        setCurrentArrayData([...parsedPack[questionsAnsweredInStage].savedProgressArray]);
+      } else if (parsedPack[questionsAnsweredInStage]?.initialArray) {
+        setCurrentArrayData([...parsedPack[questionsAnsweredInStage].initialArray]);
       }
-      return; // Keluar fungsi, tidak perlu mengacak ulang soal!
+      setStudentMoves(Number(localStorage.getItem('tycoon_moves_terakhir') || '0'));
+    }
+      return; 
     }
 
-    // 2. Jika belum ada data lokal, lakukan pengacakan soal baru seperti biasa
+    // 2. Jika localStorage kosong (efek clear/refresh ekstrem), ketuk database cloud Supabase!
+    try {
+      const tokenAktif = localStorage.getItem('tycoon_token_aktif') || inputToken;
+      const namaAktif = localStorage.getItem('tycoon_nama_siswa') || studentName;
+
+      if (tokenAktif && namaAktif) {
+        const { data: dataSiswa } = await supabase
+          .from('token_ujian')
+          .select('soal_live, jawaban_live')
+          .eq('kode_token', tokenAktif.trim().toUpperCase())
+          .eq('nama_siswa', namaAktif.trim().toUpperCase())
+          .maybeSingle();
+
+        if (dataSiswa && dataSiswa.soal_live && dataSiswa.soal_live[`stage_${stage}`]) {
+          const cloudPack = dataSiswa.soal_live[`stage_${stage}`];
+          const qIdx = questionsAnsweredInStage;
+          
+          setStageQuestions(cloudPack);
+          localStorage.setItem(`tycoon_pack_stage_${stage}`, JSON.stringify(cloudPack));
+          
+          if (dataSiswa.jawaban_live) {
+            setStageAnswers(dataSiswa.jawaban_live);
+            const targetStageAnswers = dataSiswa.jawaban_live[`stage_${stage}`] || {};
+            localStorage.setItem(`tycoon_answers_stage_${stage}`, JSON.stringify(targetStageAnswers));
+          }
+
+          if (stage === 6 && cloudPack[qIdx]) {
+            // 🌟 KOREKSI UTAMA: Cek apakah siswa sudah mencicil menyortir blok di cloud
+            const progressArr = cloudPack[qIdx].savedProgressArray;
+            const initialArr = cloudPack[qIdx].initialArray;
+            
+            const arrayFinal = progressArr ? progressArr : initialArr;
+            setCurrentArrayData([...arrayFinal]);
+            localStorage.setItem('tycoon_array_terakhir', JSON.stringify(arrayFinal));
+            
+            // Tarik jumlah langkah terakhir dari memori pembantu
+            // (Opsional: Bisa ditambahkan ke objek jika ingin mengunci jumlah langkah super ketat)
+          }
+          return; 
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memulihkan paket soal dari cloud:", err);
+    }
+
+    // 3. Jika di cloud & lokal belum ada data (Benar-benar baru pertama kali klik login)
     let maxQuestions = 5;
     if (stage === 1) maxQuestions = 9;
     else if (stage === 2 || stage === 4) maxQuestions = 10;
@@ -597,11 +646,36 @@ export default function App() {
       lockedPack.push(generateQuestion(stage, i));
     }
     
-    // Simpan paket soal perdana ini ke localStorage agar permanen sepanjang tahap
+    // Simpan di memori lokal HP siswa
     localStorage.setItem(`tycoon_pack_stage_${stage}`, JSON.stringify(lockedPack));
     setStageQuestions(lockedPack);
-    setStageAnswers({});
-    localStorage.removeItem(`tycoon_answers_stage_${stage}`);
+
+    // 🌟 SINKRONKAN DATA SOAL KE SUPABASE: Kunci mati agar tidak berubah selamanya
+    try {
+      const tokenAktif = localStorage.getItem('tycoon_token_aktif') || inputToken;
+      const namaAktif = localStorage.getItem('tycoon_nama_siswa') || studentName;
+
+      if (tokenAktif && namaAktif) {
+        // Tarik data soal_live yang sudah ada saat ini agar tidak menghapus soal dari tahap lain
+        const { data: currentData } = await supabase
+          .from('token_ujian')
+          .select('soal_live')
+          .eq('kode_token', tokenAktif.trim().toUpperCase())
+          .eq('nama_siswa', namaAktif.trim().toUpperCase())
+          .maybeSingle();
+
+        const currentSoalLive = currentData?.soal_live || {};
+        currentSoalLive[`stage_${stage}`] = lockedPack; // Masukkan paket soal tahap ini
+
+        await supabase
+          .from('token_ujian')
+          .update({ soal_live: currentSoalLive })
+          .eq('kode_token', tokenAktif.trim().toUpperCase())
+          .eq('nama_siswa', namaAktif.trim().toUpperCase());
+      }
+    } catch (err) {
+      console.error("Gagal mengunci paket soal ke database server:", err);
+    }
 
     if (stage === 6 && lockedPack[0]?.initialArray) {
       setCurrentArrayData([...lockedPack[0].initialArray]);
@@ -613,12 +687,29 @@ export default function App() {
 
   // 🌟 POINTER DINAMIS: Menjaga kompatibilitas kodingan visual lamamu
   const activeQuestion = stageQuestions[questionsAnsweredInStage] || null;
-  const playerAnswer = stageAnswers[questionsAnsweredInStage] || '';
-  // 🌟 OLEH-OLEH MEMORI: Otomatis sinkronisasi ketikan teks ke localStorage
+  // Membaca jawaban spesifik tahap dan nomor berjalan
+  const currentStageAnswers = stageAnswers[`stage_${currentStage}`] || {};
+  const playerAnswer = currentStageAnswers[questionsAnsweredInStage] || '';
+
+  // 🌟 SINKRONISASI CLOUD TERISOLASI: Menyimpan teks jawaban tanpa menimpa tahap lain
   const setPlayerAnswer = (teks) => {
     setStageAnswers(prev => {
-      const updated = { ...prev, [questionsAnsweredInStage]: teks };
-      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updated));
+      const stageKey = `stage_${currentStage}`;
+      const currentStageAnswers = prev[stageKey] || {};
+      
+      const updatedStageAnswers = { ...currentStageAnswers, [questionsAnsweredInStage]: teks };
+      const updated = { ...prev, [stageKey]: updatedStageAnswers };
+      
+      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updatedStageAnswers));
+      
+      // Kirim lembar jawaban terstruktur penuh ke Supabase
+      supabase
+        .from('token_ujian')
+        .update({ jawaban_live: updated })
+        .eq('kode_token', inputToken.trim().toUpperCase())
+        .eq('nama_siswa', studentName.trim().toUpperCase())
+        .then();
+
       return updated;
     });
   };
@@ -627,33 +718,149 @@ export default function App() {
     navigasiKeSoal(1);
   };
 
-  // ✅ KEMBALIKAN VARIABEL PEMBACA: Membaca memori saklar biner Tahap 1
-  const binarySwitches = stageAnswers[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
+  // ✅ VARIABEL PEMBACA: Membaca memori saklar biner khusus tahap berjalan
+  const binarySwitches = (stageAnswers[`stage_${currentStage}`] || {})[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
 
-  // Otomatis sinkronisasi status saklar biner Tahap 1 ke localStorage
   const setBinarySwitches = (valOrFn) => {
     setStageAnswers(prev => {
-      const currentVal = prev[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
+      const stageKey = `stage_${currentStage}`;
+      const currentStageAnswers = prev[stageKey] || {};
+      const currentVal = currentStageAnswers[`switch_${questionsAnsweredInStage}`] || [0, 0, 0, 0, 0];
       const newVal = typeof valOrFn === 'function' ? valOrFn(currentVal) : valOrFn;
-      const updated = { ...prev, [`switch_${questionsAnsweredInStage}`]: newVal };
-      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updated));
+      
+      const updatedStageAnswers = { ...currentStageAnswers, [`switch_${questionsAnsweredInStage}`]: newVal };
+      const updated = { ...prev, [stageKey]: updatedStageAnswers };
+      
+      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updatedStageAnswers));
+      
+      supabase
+        .from('token_ujian')
+        .update({ jawaban_live: updated })
+        .eq('kode_token', inputToken.trim().toUpperCase())
+        .eq('nama_siswa', studentName.trim().toUpperCase())
+        .then();
+
       return updated;
     });
   };
 
-  // ✅ KEMBALIKAN VARIABEL PEMBACA: Membaca memori lampu sirkuit Tahap 2
-  const circuitGates = stageAnswers[`circuit_${questionsAnsweredInStage}`] || { G1: null };
+  // ✅ VARIABEL PEMBACA: Membaca memori sirkuit khusus tahap berjalan
+  const circuitGates = (stageAnswers[`stage_${currentStage}`] || {})[`circuit_${questionsAnsweredInStage}`] || { G1: null };
 
-  // Otomatis sinkronisasi klik gerbang sirkuit Tahap 2 ke localStorage
   const setCircuitGates = (valOrFn) => {
     setStageAnswers(prev => {
-      const currentVal = prev[`circuit_${questionsAnsweredInStage}`] || { G1: null, G2: null, G3: null };
+      const stageKey = `stage_${currentStage}`;
+      const currentStageAnswers = prev[stageKey] || {};
+      const currentVal = currentStageAnswers[`circuit_${questionsAnsweredInStage}`] || { G1: null, G2: null, G3: null };
       const newVal = typeof valOrFn === 'function' ? valOrFn(currentVal) : valOrFn;
-      const updated = { ...prev, [`circuit_${questionsAnsweredInStage}`]: newVal };
-      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updated));
+      
+      const updatedStageAnswers = { ...currentStageAnswers, [`circuit_${questionsAnsweredInStage}`]: newVal };
+      const updated = { ...prev, [stageKey]: updatedStageAnswers };
+      
+      localStorage.setItem(`tycoon_answers_stage_${currentStage}`, JSON.stringify(updatedStageAnswers));
+      
+      supabase
+        .from('token_ujian')
+        .update({ jawaban_live: updated })
+        .eq('kode_token', inputToken.trim().toUpperCase())
+        .eq('nama_siswa', studentName.trim().toUpperCase())
+        .then();
+
       return updated;
     });
   };
+
+  // =========================================================================
+  // 🤖 🌟 REKATKAN KODE LANGKAH 1 (FUNGSI BOT SIMULATOR) DI SINI!
+  // =========================================================================
+  // 🤖 STATE SIMULATOR: Memantau apakah mesin robot sedang berjalan atau tidak
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const jalankanSimulasiBots = () => {
+    if (liveStudentsData.length === 0) {
+      alert("❌ Belum ada data siswa di tabel. Pastikan data siswa sudah ter-load dari Supabase!");
+      return;
+    }
+
+    setIsSimulating(true);
+    alert("🤖 ATURAN BARU AKTIF: 165 bot dipaksa tuntas massal tanpa refresh! Target nilai dikunci ketat antara 75% s.d 92% (TIDAK ADA NILAI 100%).");
+
+    let daftarSiswaBot = [...liveStudentsData];
+
+    const intervalSimulasi = setInterval(() => {
+      // Mencari siapa saja siswa yang statusnya belum SELESAI
+      const sisaSiswa = daftarSiswaBot.filter(s => !s.sudah_ujian);
+      
+      // Jika semua nama (165 orang) sudah menyelesaikan ujian, matikan bot otomatis
+      if (sisaSiswa.length === 0) {
+        clearInterval(intervalSimulasi);
+        setIsSimulating(false);
+        alert("🎉 SIMULASI SELESAI TOTAL! Semua nama di tabel telah menyelesaikan ujian dengan rentang nilai 75-92.");
+        return;
+      }
+
+      // Supaya pergerakan di layar terlihat alami, gerakkan 2 sampai 5 siswa secara acak tiap 2 detik
+      const jumlahSiswaBergerak = Math.min(Math.floor(Math.random() * 4) + 2, sisaSiswa.length);
+
+      for (let i = 0; i < jumlahSiswaBergerak; i++) {
+        const siswaAcak = sisaSiswa[Math.floor(Math.random() * sisaSiswa.length)];
+        const idx = daftarSiswaBot.findIndex(s => s.nama_siswa === siswaAcak.nama_siswa && s.kode_token === siswaAcak.kode_token);
+
+        if (idx === -1) continue;
+
+        // 🔒 KUNCI NILAI MUTLAK: Tentukan target nilai akhir antara 75 sampai 92 sejak awal bot bergerak
+        if (!daftarSiswaBot[idx].target_nilai_bot) {
+          daftarSiswaBot[idx].target_nilai_bot = Math.floor(Math.random() * (92 - 75 + 1)) + 75; 
+        }
+        
+        const targetNilai = daftarSiswaBot[idx].target_nilai_bot;
+        // Konversi persentase ke jumlah skor mentah dari total 44 pertanyaan (Berkisar antara 33 s.d 40 benar)
+        const targetSkorBenar = Math.round((targetNilai / 100) * 44);
+
+        let jawabanLama = daftarSiswaBot[idx].jawaban_live || {};
+        let skorLama = daftarSiswaBot[idx].skor_benar || 0;
+
+        const stageAcak = Math.floor(Math.random() * 6) + 1;
+        const stageKey = `stage_${stageAcak}`;
+        
+        if (!jawabanLama[stageKey]) jawabanLama[stageKey] = {};
+        const jumlahSoalTerisi = Object.keys(jawabanLama[stageKey]).length;
+
+        let statusSelesaiBot = false;
+        
+        // Alur pergerakan progres: naikkan skor bertahap sampai menyentuh batas target skornya
+        if (skorLama >= targetSkorBenar || (jumlahSoalTerisi >= 5 && Math.random() > 0.5)) {
+          statusSelesaiBot = true; // Paksa status mengunci ke SELESAI
+          skorLama = targetSkorBenar; // Pastikan skor akhir mendarat tepat pada target
+        } else {
+          jawabanLama[stageKey][jumlahSoalTerisi] = `BOT_VAL_${Math.floor(Math.random() * 90) + 10}`;
+          skorLama = Math.min(targetSkorBenar, skorLama + Math.floor(Math.random() * 4) + 1);
+        }
+
+        const nilaiAkhirBot = Math.round((skorLama / 44) * 100);
+
+        // Rekam progres bot ke dalam array memori lokal laptop
+        daftarSiswaBot[idx].jawaban_live = jawabanLama;
+        daftarSiswaBot[idx].skor_benar = skorLama;
+        daftarSiswaBot[idx].nilai_akhir = nilaiAkhirBot;
+        if (statusSelesaiBot) daftarSiswaBot[idx].sudah_ujian = true;
+
+        // Tembakkan langsung update perubahan ini ke database pusat Supabase secara real-time
+        supabase
+          .from('token_ujian')
+          .update({
+            jawaban_live: jawabanLama,
+            skor_benar: skorLama,
+            nilai_akhir: nilaiAkhirBot,
+            sudah_ujian: statusSelesaiBot
+          })
+          .eq('kode_token', siswaAcak.kode_token)
+          .eq('nama_siswa', siswaAcak.nama_siswa)
+          .then();
+      }
+    }, 2000); // Sinkronisasi berjalan konstan setiap 2 detik
+  };
+  // =========================================================================
 
   // ✅ Membungkus fungsi dengan setTimeout untuk menghindari cascading renders
   useEffect(() => {
@@ -664,6 +871,57 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, currentStage]);
+
+  // 🌟 CODE UPDATE: Jalur pipa Websocket Realtime untuk Monitor Laptop Guru
+  useEffect(() => {
+    // Jalankan pemantauan HANYA jika Anda login sebagai GURU-MASTER (Stage 999)
+    if (isAuthenticated && currentStage === 999) {
+      
+      // A. Ambil potret data awal seluruh siswa saat guru baru membuka halaman
+      const ambilDataAwal = async () => {
+        const { data } = await supabase
+          .from('token_ujian')
+          .select('*')
+          .order('kelas', { ascending: true })
+          .order('nama_siswa', { ascending: true });
+        if (data) setLiveStudentsData(data);
+      };
+      ambilDataAwal();
+
+      // B. Buka koneksi live stream ke server Supabase
+      const saluranRealtime = supabase
+        .channel('pantau-ujian-masal')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'token_ujian' },
+          (payload) => {
+            // Jika ada siswa baru login (INSERT) atau sedang mengirim skor (UPDATE)
+            setLiveStudentsData((dataLama) => {
+              const dataBaru = payload.new;
+              
+              // Cari tahu apakah data siswa ini sudah terdaftar di list layar laptop guru
+              const indexSiswa = dataLama.findIndex((s) => s.kode_token === dataBaru.kode_token && s.nama_siswa === dataBaru.nama_siswa);
+              
+              if (indexSiswa !== -1) {
+                // Perbarui baris skor mereka secara instan di layar tanpa kedip refresh!
+                const updatedList = [...dataLama];
+                updatedList[indexSiswa] = dataBaru;
+                return updatedList;
+              } else {
+                // Tambahkan siswa baru yang baru saja memulai login ujian
+                return [...dataLama, dataBaru];
+              }
+            });
+          }
+        )
+        .subscribe();
+
+      // Putus koneksi stream otomatis jika guru keluar atau log out dari panel
+      return () => {
+        supabase.removeChannel(saluranRealtime);
+      };
+    }
+  }, [isAuthenticated, currentStage]);  
 
   const handleLoginUjian = async () => {
     if (!studentName.trim()) {
@@ -707,9 +965,10 @@ export default function App() {
       localStorage.setItem('tycoon_nama_siswa', studentName.trim().toUpperCase());
       localStorage.setItem('tycoon_kelas_siswa', dataSiswa.kelas);
 
-      // Ganti baris penentu stage di akhir login dengan ini:
+      // 🌟 KOREKSI URUTAN: Ambil variabel savedStage LEBIH DULU agar bisa dibaca di bawahnya
       const savedStage = localStorage.getItem('tycoon_tahap_sekarang');
       const startStage = savedStage ? parseInt(savedStage, 10) : 1;
+
       setCurrentStage(startStage);
       setQuestionsAnsweredInStage(0);
       initStageQuestions(startStage);
@@ -799,14 +1058,16 @@ export default function App() {
     let totalSalahBaru = incorrectAttempts;
 
     // Looping pemeriksaan seluruh jawaban di Tahap ini secara rahasia
+    const jawabanTahapIni = stageAnswers[`stage_${currentStage}`] || {};
+
     stageQuestions.forEach((soal, idx) => {
-      if (!soal) return; // 🔒 Guard 1: Lewati jika objek soal kosong
+      if (!soal) return; 
       
-      let jawabanSiswa = (stageAnswers[idx] || '').trim().toUpperCase();
+      let jawabanSiswa = (jawabanTahapIni[idx] || '').trim().toUpperCase();
       
       // 1. Validasi khusus Saklar Biner Tahap 1
       if (currentStage === 1 && soal.mode === 'switch') {
-        const sw = stageAnswers[`switch_${idx}`] || [0, 0, 0, 0, 0];
+        const sw = jawabanTahapIni[`switch_${idx}`] || [0, 0, 0, 0, 0];
         const calculatedDecimal = sw.reduce((acc, bit, i) => acc + (bit * [16, 8, 4, 2, 1][i]), 0);
         if (calculatedDecimal === soal.targetNum) totalSkorBaru++; else totalSalahBaru++;
         return;
@@ -814,7 +1075,7 @@ export default function App() {
 
       // 2. Validasi khusus Sirkuit Logika Tahap 2
       if (currentStage === 2 && soal.mode === 'interactive-circuit') {
-        const gate = stageAnswers[`circuit_${idx}`] || { G1: null };
+        const gate = jawabanTahapIni[`circuit_${idx}`] || { G1: null };
         if (soal.correctGates && gate.G1 === soal.correctGates.G1) totalSkorBaru++; else totalSalahBaru++;
         return;
       }
@@ -904,11 +1165,50 @@ export default function App() {
     const [movedValue] = updatedArray.splice(sourceIndex, 1);
     updatedArray.splice(targetIndex, 0, movedValue);
 
+    // 1. Perbarui state visual dan memori lokal HP siswa
     setCurrentArrayData(updatedArray);
     localStorage.setItem('tycoon_array_terakhir', JSON.stringify(updatedArray));
+    
     const newMovesCount = studentMoves + 1;
     setStudentMoves(newMovesCount);
+    localStorage.setItem('tycoon_moves_terakhir', String(newMovesCount));
 
+    // 🌟 KODE BARU: Kirim susunan blok data terbaru ke Supabase agar status sortir terkunci di cloud!
+    try {
+      const tokenAktif = localStorage.getItem('tycoon_token_aktif') || inputToken;
+      const namaAktif = localStorage.getItem('tycoon_nama_siswa') || studentName;
+
+      if (tokenAktif && namaAktif) {
+        supabase
+          .from('token_ujian')
+          .select('soal_live')
+          .eq('kode_token', tokenAktif.trim().toUpperCase())
+          .eq('nama_siswa', namaAktif.trim().toUpperCase())
+          .maybeSingle()
+          .then(({ data: currentData }) => {
+            const currentSoalLive = currentData?.soal_live || {};
+            
+            // Pastikan paket soal Tahap 6 ada sebelum memperbarui array di dalamnya
+            if (currentSoalLive[`stage_6`]) {
+              const qIdx = questionsAnsweredInStage;
+              
+              // Simpan susunan blok terbaru ke properti khusus 'savedProgressArray'
+              currentSoalLive[`stage_6`][qIdx].savedProgressArray = updatedArray;
+
+              supabase
+                .from('token_ujian')
+                .update({ soal_live: currentSoalLive })
+                .eq('kode_token', tokenAktif.trim().toUpperCase())
+                .eq('nama_siswa', namaAktif.trim().toUpperCase())
+                .then();
+            }
+          });
+      }
+    } catch (err) {
+      console.error("Gagal mengamankan progres sortir ke cloud:", err);
+    }
+
+    // Jalankan logika pengecekan apakah susunan array sudah benar (Sorted)
     let isSorted = false;
     const qNum = activeQuestion.qNum;
 
@@ -957,10 +1257,10 @@ export default function App() {
 
     if (isSorted) {
       if (newMovesCount <= activeQuestion.maxEffectiveMoves) {
-        navigasiKeSoal(1); // ✅ Langsung amankan dan maju nomor
+        navigasiKeSoal(1); 
       } else {
         setIncorrectAttempts(prev => prev + 1);
-        navigasiKeSoal(1); // ✅ Lewat batas, catat salah tapi tetap maju
+        navigasiKeSoal(1); 
       }
     }
   };
@@ -1050,40 +1350,117 @@ export default function App() {
           {/* 📊 PANEL UTAMA MONITORING & REKAP NILAI DIREKTUR GURU                     */}
           {/* ========================================================================= */}
           {currentStage === 999 ? (
-            <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-4xl mx-auto">
+            <div className="border-4 border-black bg-white p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-6xl mx-auto">
               <div className="flex flex-col md:flex-row justify-between items-center border-b-4 border-black pb-4 mb-4 md:mb-6 gap-4">
                 <div className="text-center md:text-left">
-                  <h2 className="text-xl md:text-2xl font-black uppercase">🗃️ PANEL MONITORING GURU</h2>
-                  <p className="text-[10px] md:text-xs font-bold text-stone-500 uppercase">Rekapitulasi Hasil Evaluasi Kompetensi Algoritma</p>
+                  <h2 className="text-xl md:text-2xl font-black uppercase text-stone-900">🗃️ SERVER MONITORING UTAMA GURU</h2>
+                  <p className="text-[10px] md:text-xs font-bold text-blue-600 uppercase mt-0.5 tracking-wider animate-pulse">
+                    🟢 KONEKSI WEBSOCKET CLOUD AKTIF // MEMANTAU LIVE JAWABAN SISWA...
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={unduhRekapNilaiExcel}
-                  className="w-full md:w-auto bg-emerald-400 hover:bg-emerald-300 text-black px-6 py-3 border-4 border-black font-black uppercase text-[10px] md:text-xs tracking-wider shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer"
-                >
-                  📥 UNDUH FORMAT SPREADSHEET (.CSV)
-                </button>
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                  <button
+                    type="button"
+                    onClick={jalankanSimulasiBots}
+                    disabled={isSimulating}
+                    className={`flex-1 md:flex-none text-black px-4 py-2 border-2 md:border-4 border-black font-black uppercase text-[10px] md:text-xs tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer ${isSimulating ? 'bg-stone-300 animate-pulse' : 'bg-yellow-400 hover:bg-yellow-300'}`}
+                  >
+                    {isSimulating ? "🤖 BOTS SEDANG BERAKSI..." : "⚡ SIMULASI BOTS REAL-TIME"}
+                  </button>
+
+                  {/* TOMBOL UNDUH SPREADSHEET ASLI (Sekitar baris 783) */}
+                  <button
+                    type="button"
+                    onClick={unduhRekapNilaiExcel}
+                    className="flex-1 md:flex-none bg-emerald-400 hover:bg-emerald-300 text-black px-4 py-2 border-2 md:border-4 border-black font-black uppercase text-[10px] md:text-xs tracking-wider shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    📥 UNDUH SPREADSHEET (.CSV)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.reload();
+                    }}
+                    className="flex-1 md:flex-none bg-stone-900 text-white text-[10px] md:text-xs font-black uppercase px-4 py-2 border-2 border-black hover:bg-stone-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                  >
+                    ⬅️ KEMBALI
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-stone-50 border-2 md:border-4 border-black p-4 text-center mb-6">
-                <p className="text-[10px] md:text-xs font-bold text-stone-600 leading-relaxed uppercase">
-                  💡 Informasi Excel: File yang diunduh sudah diformat rapi menggunakan pembatas semicolon (;). <br />
-                  Kamu tinggal membukanya langsung di **Microsoft Excel** atau **Google Sheets** tanpa perlu menyalin atau menata format kolom lagi!
-                </p>
-              </div>
+              {/* LIVE MONITORING TABLE WITH DETAIL INSPECTION */}
+              <div className="w-full overflow-x-auto border-2 md:border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                <table className="w-full font-mono text-[11px] md:text-xs text-left border-collapse bg-stone-50">
+                  <thead>
+                    <tr className="bg-stone-950 text-yellow-400 font-black uppercase border-b-2 border-black">
+                      <th className="p-2 md:p-3 border-r border-black text-center w-12">NO</th>
+                      <th className="p-2 md:p-3 border-r border-black">NAMA SISWA</th>
+                      <th className="p-2 md:p-3 border-r border-black text-center w-20">KELAS</th>
+                      <th className="p-2 md:p-3 border-r border-black">ISI LEMBAR JAWABAN (LIVE)</th>
+                      <th className="p-2 md:p-3 border-r border-black text-center">STATUS</th>
+                      <th className="p-2 md:p-3 border-r border-black text-center">SKOR MENTAH</th>
+                      <th className="p-2 md:p-3 text-center">NILAI</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveStudentsData.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="p-8 text-center text-stone-400 font-bold uppercase tracking-widest bg-white">
+                          📭 Belum ada data siswa ter-sinkronisasi di cloud...
+                        </td>
+                      </tr>
+                    ) : (
+                      liveStudentsData.map((siswa, indeks) => {
+                        // Membaca dan merapikan visual data JSON live jawaban siswa
+                        const liveAns = siswa.jawaban_live || {};
+                        const barisJawaban = Object.keys(liveAns).map(key => {
+                          if (key.startsWith('switch_')) {
+                            return `[S${parseInt(key.split('_')[1])+1}: Biner ${JSON.stringify(liveAns[key])}]`;
+                          }
+                          if (key.startsWith('circuit_')) {
+                            return `[S${parseInt(key.split('_')[1])+1}: Sirkuit=${liveAns[key]?.G1}]`;
+                          }
+                          return `[Soal ${parseInt(key)+1}: "${liveAns[key]}"]`;
+                        }).join(' | ');
 
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.reload();
-                }}
-                className="w-full md:w-auto bg-stone-900 text-white text-[10px] md:text-xs font-black uppercase px-4 py-2 border-2 border-black hover:bg-stone-800 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-              >
-                ⬅️ KEMBALI KE HALAMAN LOGIN UTAMA
-              </button>
+                        return (
+                          <tr 
+                            key={`${siswa.kode_token}-${siswa.nama_siswa}`} 
+                            className={`border-b border-black font-bold transition-all duration-300 ${siswa.sudah_ujian ? 'bg-emerald-50 hover:bg-emerald-100' : 'bg-white hover:bg-yellow-50'}`}
+                          >
+                            <td className="p-2 md:p-3 border-r border-black text-center font-black bg-stone-100">{indeks + 1}</td>
+                            <td className="p-2 md:p-3 border-r border-black uppercase tracking-tight text-stone-800 font-black">{siswa.nama_siswa}</td>
+                            <td className="p-2 md:p-3 border-r border-black text-center text-blue-600 bg-stone-50/50">{siswa.kelas}</td>
+                            
+                            {/* 🔍 BARU: Kolom Detektif Jawaban Siswa per Nomor Soal */}
+                            <td className="p-2 md:p-3 border-r border-black text-[10px] text-stone-600 font-mono max-w-xs md:max-w-md truncate hover:whitespace-normal break-all">
+                              {barisJawaban ? barisJawaban : <span className="text-stone-300 italic">Belum mengisi lembar jawaban...</span>}
+                            </td>
+
+                            <td className="p-2 md:p-3 border-r border-black text-center">
+                              <span className={`px-2 py-0.5 border border-black font-black uppercase text-[9px] rounded-md shadow-[1px_1px_0px_rgba(0,0,0,1)] ${siswa.sudah_ujian ? 'bg-emerald-300 text-stone-900' : 'bg-amber-300 text-stone-900'}`}>
+                                {siswa.sudah_ujian ? "🔒 SELESAI" : "⚡ PROGRES"}
+                              </span>
+                            </td>
+                            <td className="p-2 md:p-3 border-r border-black text-center font-black text-stone-700 bg-stone-100/50">
+                              {siswa.skor_benar !== null ? `${siswa.skor_benar} / 44` : "0 / 44"}
+                            </td>
+                            <td className="p-2 md:p-3 text-center">
+                              <span className={`font-black text-sm ${siswa.nilai_akhir >= 75 ? 'text-emerald-600' : 'text-stone-900'}`}>
+                                {siswa.nilai_akhir !== null ? `${siswa.nilai_akhir}%` : "0%"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : isExamComplete ? (
+
             /* 📊 LAYAR PENGUNCIAN HASIL FINAL SISWA */
             <div className="border-4 border-black bg-white p-6 md:p-8 text-center max-w-2xl mx-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] my-6 md:my-12">
               <h2 className="text-2xl md:text-4xl font-black text-emerald-600 uppercase tracking-tight mb-2">📊 HASIL EVALUASI UJIAN</h2>
